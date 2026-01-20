@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rapport Auto</title>
+  <style>
+    :root {
+      --bg: #0e1117; --panel: #161b22; --accent: #33c3f0;
+      --text: #e6edf3; --muted: #8b949e; --border: #30363d;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+    header { padding: 16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .template-bar { display:flex; gap:8px; padding:8px 0; }
+    .template-pill { padding:8px 12px; border:1px solid var(--border); border-radius:10px; cursor:pointer; color:var(--text); background:#0f141b; }
+    .template-pill.active { border-color: var(--accent); background: rgba(51,195,240,0.15); }
+    .grid { display:grid; grid-template-columns: 380px 1fr; height: calc(100vh - 64px); }
+    .panel { background: var(--panel); border-right:1px solid var(--border); padding:18px; overflow-y:auto; }
+    .preview { background:#c6c6c6; overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:24px; }
+    .rapport-wrapper { background:#c6c6c6; display:flex; justify-content:center; align-items:flex-start; padding:8px; }
+    .rapport-page { background:#fff; color:#000; width:820px; min-height:1120px; padding:20px 24px; box-shadow:0 2px 12px rgba(0,0,0,0.25); border:1px solid #ddd; word-wrap: break-word; overflow-wrap: break-word; }
+    .section { border:1px solid #000; margin-bottom:16px; }
+    .section-title { background:#dcdcdc; font-weight:700; text-align:center; padding:6px 8px; border-bottom:1px solid #000; font-size:13px; }
+    .section-body { padding:10px 12px; display:flex; flex-direction:column; gap:6px; font-size:13px; word-wrap: break-word; overflow-wrap: break-word; }
+    .pv-row { display:flex; gap:6px; font-size:13px; line-height:20px; }
+    .pv-label { font-weight:700; }
+    input, select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f141b; color:var(--text); }
+    button { padding:12px 14px; border:none; border-radius:10px; background: linear-gradient(120deg,#33c3f0,#4be1ec); color:#0b0f14; font-weight:600; cursor:pointer; }
+    textarea { width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:#0f141b; color:#e6edf3; }
+    .status { font-size:12px; color:var(--muted); margin-top:12px; }
+    .editable-field { transition: all 0.2s ease; cursor: text; }
+    .editable-field:hover { border-bottom-color: var(--accent) !important; background: rgba(51,195,240,0.05); }
+    .editable-field:focus { outline: none; border-bottom-color: var(--accent) !important; background: rgba(51,195,240,0.1); }
+    .image-drop-zone { min-height: 100px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999; cursor: pointer; transition: all 0.3s ease; margin: 10px 0; }
+    .image-drop-zone:hover { border-color: var(--accent); background: rgba(51,195,240,0.05); color: var(--accent); }
+    .image-drop-zone.dragover { border-color: var(--accent); background: rgba(51,195,240,0.15); transform: scale(1.02); }
+    .image-container { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 10px 0; background: #f9f9f9; }
+    .image-preview-wrapper { position: relative; display: inline-block; width: 100%; }
+    .image-preview-wrapper img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; display: block; }
+    .image-controls { margin-top: 8px; padding: 8px; background: white; border-radius: 6px; border: 1px solid #ddd; }
+    .image-controls label { display: block; font-size: 11px; color: #666; margin-bottom: 4px; }
+    .image-controls input[type="range"] { width: 100%; }
+    .image-controls textarea { width: 100%; min-height: 60px; font-size: 12px; resize: vertical; }
+    .image-controls select { width: 100%; font-size: 12px; padding: 4px; margin-bottom: 6px; }
+    .image-remove-btn { position: absolute; top: 5px; right: 5px; background: #ff4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; z-index: 10; }
+    .image-remove-btn:hover { background: #cc0000; }
+    .text-position-btns { display: flex; gap: 4px; margin-bottom: 6px; }
+    .text-position-btns button { flex: 1; padding: 4px; font-size: 11px; }
+    @media(max-width:900px){ .grid{grid-template-columns:1fr; height:auto;} .preview{height:70vh;} .panel{border-right:none; border-bottom:1px solid var(--border);} }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const PREDEFINED_PHRASES = [
+      "L'analyse des données {detaille} n'a relevé aucune information en lien avec cette catégorie.",
+      "Le smartphone est verrouillé par un code PIN à « X ». Il a été réinitialisé le « X » à « X. »",
+      "Les techniques d'investigations ont permis une exploitation complète des données du téléphone et de la carte SIM.",
+      "D'après les éléments, la période d'utilisation du téléphone s'étend du « X » au « X».",
+      "Les traces de « X » ont été retrouvées dans le téléphone portant « X » (carte SIM).",
+      "L'extraction partielle ne permet pas de mettre en évidence « X ».",
+      "L'accès à l'intégralité des données de l'utilisateur n'a pas été possible.",
+      "L'adresse mail « X » a été associée au smartphone comme compte utilisateur «X »",
+      "Les applications de communication installées sont « X »",
+      "L'ensemble des conversations ont été réalisées en langue « X ».",
+      "Certaines conversations ont été réalisées en langue étrangère.",
+      "L'historique web de l'utilisateur du smartphone contient en majeure partie des recherches liées à « X ».",
+      "Du contenu en lien avec de la propagande l'état islamique apparait dans de nombreuses conversations.",
+      "Un compte « X » a été associé au smartphone « X »",
+      "Les données recueillies n'ont pas révélé d'éléments susceptible de constituer une infraction ou compromettant la sécurité pénitentiaire.",
+      "La date et l'heure de synchronisation du compte sur le smartphone sont inconnues.",
+      "Voici un tableau résumé des appels pour la plateforme « X » :",
+      "Voici un tableau résumé des conversations pour la plateforme « X » :",
+      "Ce graphique représente le volume de contacts par plateforme :",
+      "Ce graphique représente le nombre d'appels par plateforme :",
+      "Ce graphique représente le volume de messages par plateforme :",
+      "Ce graphique représente le volume de contacts par plateforme :",
+      "Ce graphique représente le top 15 des appels pour la plateforme « X » :",
+      "Ce graphique représente le top 15 des messages pour la plateforme « X » :",
+      "Ce graphique représente le top 15 de la durée des appels pour la plateforme « X » :",
+      "Les messages émis de l'appareil apparaissent dans des bulles de conversation entouré d'une couleur verte et les messages reçus de l'appareil sont entourés en gris.",
+      "Extrait d'une photo partagée dans la conversation réalisée entre l'utilisateur du téléphone vers l'interlocuteur « X » le « X ».",
+      "Extrait d'une conversation réalisée entre l'utilisateur du téléphone vers l'interlocuteur « X » le « X ».",
+      "Aucun élément relevé ne correspond à cette catégorie.",
+      "Sans objet."
+    ];
+
+    const state = {
+      placeholders: [], values: {}, status: "Prêt", headings: [], headingChoices: [],
+      defaultTemplate: "",
+      // Nouvelle structure: chaque titre contient un tableau de blocs ordonnés
+      headingContent: {}, // {heading: [{type: "text"|"image", content/src, width}]}
+      markers: [], // List of image marker keys from [[IMG:key]]
+      imagesAtMarkers: {},
+      templates: ["test","test2","test3"], template: "test", imageWidthCm: 7.5, overwrite: false,
+      imageWidths: {}, imageTexts: {}, headerHtml: "",
+      showDefaultPhrases: false, // Case à cocher pour afficher une phrase globale sous tous les titres
+      globalPhraseIndex: null // Index de la phrase type sélectionnée pour tous les titres
+    };
+
+    const qs = (s)=>document.querySelector(s); const qsa=(s)=>Array.from(document.querySelectorAll(s));
+    const escapeHtml = (str)=>String(str||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const defaultPhrase = (mapping)=>{
+      let t = state.defaultTemplate || "";
+      Object.entries(mapping||{}).forEach(([k,v])=>{ t=t.replaceAll(k,v||""); });
+      return t;
+    };
+    const fillPhrase = (phrase)=>{
+      let result = phrase;
+      Object.entries(state.values||{}).forEach(([k,v])=>{ result=result.replaceAll(k,v||""); });
+      return result;
+    };
+
+        function renderPreview(){
+      const preview = qs("#preview"); if(!preview) return;
+      const widthFor = (key)=>`${(state.imageWidths?.[key] ?? state.imageWidthCm)}cm`;
+      const v=(k)=>escapeHtml(state.values[k]||"");
+      const vEditable=(k)=>`<span contenteditable="true" data-field="${escapeHtml(k)}" style="display:inline-block;min-width:50px;border-bottom:1px dashed transparent;" class="editable-field">${escapeHtml(state.values[k]||"")}</span>`;
+
+      // Fonction pour remplacer les placeholders dans l'en-tête HTML
+      const replacePlaceholdersInHeader = (html) => {
+        let result = html;
+        Object.entries(state.values).forEach(([key, value]) => {
+          result = result.replaceAll(key, escapeHtml(value || ""));
+        });
+        return result;
+      };
+      const renderedHeadings = state.headings.map((title,idx)=>{
+        const choice = state.headingChoices[idx]||{mode:"auto",text:""};
+        if(choice.mode==="none") return null;
+
+        let text = "";
+        // PRIORITÉ 1: Si la phrase globale est activée et sélectionnée, l'utiliser pour TOUS les titres (sauf mode "none")
+        if(state.showDefaultPhrases && state.globalPhraseIndex !== null && choice.mode !== "none") {
+          const phraseTemplate = PREDEFINED_PHRASES[state.globalPhraseIndex];
+          console.log("[DEBUG RENDER] Heading:", title, "Using global phrase index:", state.globalPhraseIndex);
+          text = escapeHtml(fillPhrase(phraseTemplate));
+        }
+        // PRIORITÉ 2: Sinon, si texte personnalisé existe, l'utiliser
+        else if(choice.mode==="custom" || choice.text) {
+          text = escapeHtml(choice.text||"");
+        }
+
+        const blocks = state.headingContent[title]||[];
+        return {title:escapeHtml(title), text, blocks, idx};
+      }).filter(Boolean);
+      const markersImages = Object.entries(state.imagesAtMarkers||{});
+      const markerImg = (key)=>{
+        const src = state.imagesAtMarkers?.[key];
+        const imgKey = 'marker:' + key;
+        const textData = state.imageTexts?.[imgKey] || {before:"", after:"", position:"none"};
+        const hasText = textData.position !== "none" && (textData.before || textData.after);
+
+        // Afficher les phrases types même sans image
+        let html = '';
+        if(textData.position==="before" && textData.before){
+          html += `<div style="font-size:13px;margin-bottom:8px;position:relative;padding-right:24px;" contenteditable="true" data-img-text-before="${escapeHtml(imgKey)}">
+            ${escapeHtml(textData.before)}
+            <button class="image-remove-btn" style="position:absolute;top:0;right:0;" data-remove-text="${escapeHtml(imgKey)}" data-text-type="before">×</button>
+          </div>`;
+        }
+
+        if(!src){
+          html += `<div class="image-drop-zone" data-marker="${escapeHtml(key)}">Glissez une image ici<br><small>[[IMG:${escapeHtml(key)}]]</small></div>`;
+        } else {
+          const width = state.imageWidths?.[imgKey] ?? state.imageWidthCm;
+          html += `<div class="image-preview-wrapper" data-marker="${escapeHtml(key)}">
+            <img src="${escapeHtml(src)}" style="max-width:${width}cm;" alt="marker ${escapeHtml(key)}" />
+            <button class="image-remove-btn" data-remove-marker="${escapeHtml(key)}">×</button>
+          </div>`;
+        }
+
+        if(textData.position==="after" && textData.after){
+          html += `<div style="font-size:13px;margin-top:8px;position:relative;padding-right:24px;" contenteditable="true" data-img-text-after="${escapeHtml(imgKey)}">
+            ${escapeHtml(textData.after)}
+            <button class="image-remove-btn" style="position:absolute;top:0;right:0;" data-remove-text="${escapeHtml(imgKey)}" data-text-type="after">×</button>
+          </div>`;
+        }
+
+        html = `<div class="image-container">
+          ${html}
+          <div class="image-controls">
+            ${src?`<label>Taille: ${(state.imageWidths?.[imgKey] ?? state.imageWidthCm).toFixed(1)} cm</label>
+            <input type="range" min="3" max="20" step="0.5" value="${state.imageWidths?.[imgKey] ?? state.imageWidthCm}" data-img-width="${escapeHtml(imgKey)}" />`:''}
+            <label style="margin-top:6px;">Texte avant/après:</label>
+            <select data-img-template="${escapeHtml(imgKey)}">
+              <option value="">-- Choisir une phrase type --</option>
+              ${PREDEFINED_PHRASES.map((p,i)=>`<option value="${i}">${escapeHtml(p.substring(0,50))}...</option>`).join("")}
+            </select>
+            <div class="text-position-btns">
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="before" style="background:${textData.position==='before'?'#33c3f0':'#ddd'}">Avant</button>
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="after" style="background:${textData.position==='after'?'#33c3f0':'#ddd'}">Après</button>
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="none" style="background:${textData.position==='none'?'#33c3f0':'#ddd'}">Aucun</button>
+            </div>
+            <textarea placeholder="Ou écrivez votre propre texte..." data-img-custom-text="${escapeHtml(imgKey)}">${escapeHtml(textData[textData.position]||"")}</textarea>
+          </div>
+        </div>`;
+        return html;
+      };
+
+      const renderContentBlocks = (blocks)=>{
+        if(!blocks || blocks.length === 0) return "";
+        return blocks.map((block, blockIdx) => {
+          if(block.type === "text"){
+            return `<div style="font-size:13px;margin:8px 0;word-wrap:break-word;overflow-wrap:break-word;">${escapeHtml(block.content)}</div>`;
+          } else if(block.type === "image"){
+            const width = block.width || state.imageWidthCm;
+            return `<div style="margin:8px 0;"><img src="${escapeHtml(block.src)}" style="max-width:${width}cm;border:1px solid #ddd;border-radius:6px;" /></div>`;
+          }
+          return "";
+        }).join("");
+      };
+
+      if(state.template==="test2"){
+        const headingsHtml = renderedHeadings.length?`
+          <div class="section">
+            <div class="section-title">Sections dynamiques</div>
+            <div class="section-body" style="gap:12px;">
+              ${renderedHeadings.map(item=>`
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <div style="font-weight:700;font-size:14px;">${item.title}</div>
+                  <div style="font-size:13px;word-wrap:break-word;overflow-wrap:break-word;" contenteditable="true" data-heading-edit="${item.idx}">${item.text||""}</div>
+                  ${renderContentBlocks(item.blocks)}
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button type="button" data-add-text-preview="${item.idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;color:#e6edf3;border:1px solid #444;border-radius:4px;cursor:pointer;">+ Texte</button>
+                    <button type="button" data-add-image-preview="${item.idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;color:#e6edf3;border:1px solid #444;border-radius:4px;cursor:pointer;">+ Image</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `:"";
+
+        preview.innerHTML = `
+          <div class="rapport-wrapper">
+            <div class="rapport-page">
+              ${state.headerHtml ? replacePlaceholdersInHeader(state.headerHtml) : ""}
+              <div class="section">
+                <div class="section-title">Identification</div>
+                <div class="section-body">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <tr>
+                      <td style="width:60%;vertical-align:top;padding-right:12px;border-right:1px solid #000;">
+                        <div class="pv-row"><span class="pv-label">Nom :</span>${vEditable("{nom}")}</div>
+                        <div class="pv-row"><span class="pv-label">Prenom :</span>${vEditable("{prenom}")}</div>
+                        <div class="pv-row"><span class="pv-label">Date de naissance :</span>${vEditable("{date}")}</div>
+                        <div class="pv-row"><span class="pv-label">Nationalite :</span>${vEditable("{nat}")}</div>
+                        <div class="pv-row"><span class="pv-label">Lieu d'incarceration :</span>${vEditable("{lieu}")}</div>
+                        <div class="pv-row"><span class="pv-label">Numero d'ecrou :</span>${vEditable("{numec}")}</div>
+                      </td>
+                      <td style="width:40%;text-align:center;vertical-align:top;padding-left:12px;">
+                        <div style="font-weight:700;margin-bottom:6px;">Photo profil</div>
+                        ${markerImg("profil")}
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Supports</div>
+                <div class="section-body">
+                  <div class="pv-row"><span class="pv-label">Type :</span>${vEditable("{type}")}</div>
+                  <div class="pv-row"><span class="pv-label">Operateur :</span>${vEditable("{operateur}")}</div>
+                  <div class="pv-row"><span class="pv-label">ICCID :</span>${vEditable("{iccid}")}</div>
+                  <div class="pv-row"><span class="pv-label">IMSI :</span>${vEditable("{imsi}")}</div>
+                  <div class="pv-row"><span class="pv-label">MSISDN :</span>${vEditable("{msisdn}")}</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Photos</div>
+                <div class="section-body">
+                  <div style="display:flex;gap:12px;align-items:flex-start;">
+                    <div style="flex:1;text-align:center;">
+                      <div style="font-weight:700;">SIM 1</div>
+                      ${markerImg("sim1")}
+                    </div>
+                    <div style="flex:1;text-align:center;">
+                      <div style="font-weight:700;">SIM 2</div>
+                      ${markerImg("sim2")}
+                    </div>
+                  </div>
+                  <div class="pv-row"><span class="pv-label">Commentaires :</span><span>Néant.</span></div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Operateur / Synchro</div>
+                <div class="section-body">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                      <tr style="background:#f2f2f2;border-bottom:1px solid #000;">
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">Operateur</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">ICCID</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">IMSI</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">MSISDN</th>
+                        <th style="text-align:left;padding:6px;">Date synchro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync}")}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Synthèse</h3>
+              <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Contenu de la carte SIM</h3>
+              <div style="font-size:13px;margin:10px 0;"><strong>Informations sur le support :</strong></div>
+              ${headingsHtml}
+            </div>
+          </div>
+        `;
+        attachInlineEditors();
+        return;
+      }
+
+      if(state.template==="test3"){
+        const headingsHtml = renderedHeadings.length?`
+          <div class="section">
+            <div class="section-title">Sections dynamiques</div>
+            <div class="section-body" style="gap:12px;">
+              ${renderedHeadings.map(item=>`
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <div style="font-weight:700;font-size:14px;">${item.title}</div>
+                  <div style="font-size:13px;word-wrap:break-word;overflow-wrap:break-word;" contenteditable="true" data-heading-edit="${item.idx}">${item.text||""}</div>
+                  ${renderContentBlocks(item.blocks)}
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button type="button" data-add-text-preview="${item.idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;color:#e6edf3;border:1px solid #444;border-radius:4px;cursor:pointer;">+ Texte</button>
+                    <button type="button" data-add-image-preview="${item.idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;color:#e6edf3;border:1px solid #444;border-radius:4px;cursor:pointer;">+ Image</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `:"";
+
+        preview.innerHTML = `
+          <div class="rapport-wrapper">
+            <div class="rapport-page">
+              ${state.headerHtml ? replacePlaceholdersInHeader(state.headerHtml) : ""}
+              <div class="section">
+                <div class="section-title">Informations générales</div>
+                <div class="section-body">
+                  <div class="pv-row"><span class="pv-label">Pseudo :</span>${vEditable("{pseudo}")}</div>
+                  <div class="pv-row"><span class="pv-label">Marque :</span>${vEditable("{marque}")}</div>
+                  <div class="pv-row"><span class="pv-label">Modèle :</span>${vEditable("{modele}")}</div>
+                  <div class="pv-row"><span class="pv-label">Numéro de série :</span>${vEditable("{numserie}")}</div>
+                  <div class="pv-row"><span class="pv-label">Date début :</span>${vEditable("{datedeb}")}</div>
+                  <div class="pv-row"><span class="pv-label">Date fin :</span>${vEditable("{datefin}")}</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Support technique</div>
+                <div class="section-body">
+                  <div class="pv-row"><span class="pv-label">Type :</span>${vEditable("{type}")}</div>
+                  <div class="pv-row"><span class="pv-label">Marque téléphone :</span>${vEditable("{marquet}")}</div>
+                  <div class="pv-row"><span class="pv-label">Modèle téléphone :</span>${vEditable("{modelet}")}</div>
+                  <div class="pv-row"><span class="pv-label">Version OS :</span>${vEditable("{vers}")}</div>
+                  <div class="pv-row"><span class="pv-label">IMEI 1 :</span>${vEditable("{imei1}")}</div>
+                  <div class="pv-row"><span class="pv-label">IMEI 2 :</span>${vEditable("{imei2}")}</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Photographies du téléphone</div>
+                <div class="section-body">
+                  <div style="display:flex;gap:12px;align-items:flex-start;">
+                    <div style="flex:1;text-align:center;">
+                      <div style="font-weight:700;">Vue avant</div>
+                      ${markerImg("supp1")}
+                    </div>
+                    <div style="flex:1;text-align:center;">
+                      <div style="font-weight:700;">Vue arrière</div>
+                      ${markerImg("supp2")}
+                    </div>
+                  </div>
+                  <div class="pv-row"><span class="pv-label">Commentaires :</span>${vEditable("{commentaire}")}</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Opérateurs / Synchro</div>
+                <div class="section-body">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                      <tr style="background:#f2f2f2;border-bottom:1px solid #000;">
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">Opérateur</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">ICCID</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">IMSI</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">MSISDN</th>
+                        <th style="text-align:left;padding:6px;">Date synchro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur1}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid1}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi1}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn1}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync1}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur2}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid2}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi2}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn2}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync2}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur3}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid3}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi3}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn3}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync3}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur4}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid4}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi4}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn4}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync4}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur5}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid5}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi5}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn5}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync5}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur6}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid6}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi6}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn6}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync6}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur7}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid7}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi7}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn7}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync7}")}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur8}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid8}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi8}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn8}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync8}")}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Synthèse</h3>
+              <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Contenu ${vEditable("{detaille}")}</h3>
+              ${headingsHtml}
+            </div>
+          </div>
+        `;
+        attachInlineEditors();
+        return;
+      }
+
+      // Trame par defaut (test)
+      preview.innerHTML = `
+        <div class="rapport-wrapper">
+          <div class="rapport-page">
+            ${state.headerHtml ? replacePlaceholdersInHeader(state.headerHtml) : ""}
+            <div class="section">
+              <div class="section-title">Identification</div>
+              <div class="section-body">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                  <tr>
+                    <td style="width:60%;vertical-align:top;padding-right:12px;border-right:1px solid #000;">
+                      <div class="pv-row"><span class="pv-label">Nom :</span>${vEditable("{nom}")}</div>
+                      <div class="pv-row"><span class="pv-label">Prénom :</span>${vEditable("{prenom}")}</div>
+                      <div class="pv-row"><span class="pv-label">Date de naissance :</span>${vEditable("{date}")}</div>
+                      <div class="pv-row"><span class="pv-label">Nationalité :</span>${vEditable("{nat}")}</div>
+                      <div class="pv-row"><span class="pv-label">Lieu d'incarcération :</span>${vEditable("{lieu}")}</div>
+                      <div class="pv-row"><span class="pv-label">Numéro d'écrou :</span>${vEditable("{numec}")}</div>
+                    </td>
+                    <td style="width:40%;text-align:center;vertical-align:top;padding-left:12px;">
+                      <div style="font-weight:700;margin-bottom:6px;">Photo profil</div>
+                      ${markerImg("profil")}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-title">Supports investigués</div>
+              <div class="section-body">
+                <div class="pv-row"><span class="pv-label">Type de support numérique :</span>${vEditable("{type}")}</div>
+                <div class="pv-row"><span class="pv-label">Marque :</span>${vEditable("{marque}")}</div>
+                <div class="pv-row"><span class="pv-label">Modèle :</span>${vEditable("{modele}")}</div>
+                <div class="pv-row"><span class="pv-label">Capacité :</span>${vEditable("{stockage}")}</div>
+                <div class="pv-row"><span class="pv-label">IMEI :</span>${vEditable("{imei}")}</div>
+                <div class="pv-row"><span class="pv-label">Numéro de série :</span>${vEditable("{num}")}</div>
+                <div class="pv-row"><span class="pv-label">Version OS :</span>${vEditable("{vers}")}</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-title">Photographies des supports numériques lors de la réception</div>
+              <div class="section-body">
+                <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                  ${state.markers.includes("supp1") ? `
+                    <div style="flex:1;min-width:200px;text-align:center;">
+                      <div style="font-weight:700;">Support 1</div>
+                      ${markerImg("supp1")}
+                    </div>
+                  ` : ''}
+                  ${state.markers.includes("supp2") ? `
+                    <div style="flex:1;min-width:200px;text-align:center;">
+                      <div style="font-weight:700;">Support 2</div>
+                      ${markerImg("supp2")}
+                    </div>
+                  ` : ''}
+                  ${!state.markers.includes("supp1") && !state.markers.includes("supp2") && state.markers.includes("support") ? `
+                    <div style="flex:1;min-width:200px;text-align:center;">
+                      <div style="font-weight:700;">Vue avant</div>
+                      ${markerImg("support")}
+                    </div>
+                  ` : ''}
+                  ${!state.markers.includes("supp1") && !state.markers.includes("supp2") && state.markers.includes("detail") ? `
+                    <div style="flex:1;min-width:200px;text-align:center;">
+                      <div style="font-weight:700;">Vue arrière</div>
+                      ${markerImg("detail")}
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="pv-row"><span class="pv-label">Commentaires :</span><span>Néant.</span></div>
+              </div>
+            </div>
+            <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Synthèse</h3>
+            <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Contenu ${vEditable("{detaille}")}</h3>
+            ${renderedHeadings.length?`
+              <div class="section">
+                <div class="section-title">Sections dynamiques</div>
+                <div class="section-body" style="gap:12px;">
+                  ${renderedHeadings.map(item=>`
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      <div style="font-weight:700;font-size:14px;">${item.title}</div>
+                      <div style="font-size:13px;word-wrap:break-word;overflow-wrap:break-word;" contenteditable="true" data-heading-edit="${item.idx}">${item.text||""}</div>
+                      ${renderContentBlocks(item.blocks)}
+                      <div style="display:flex;gap:6px;margin-top:8px;">
+                        <button type="button" data-add-text-preview="${item.idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;color:#e6edf3;border:1px solid #444;border-radius:4px;cursor:pointer;">+ Texte</button>
+                        <button type="button" data-add-image-preview="${item.idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;color:#e6edf3;border:1px solid #444;border-radius:4px;cursor:pointer;">+ Image</button>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            `:""}
+            ${markersImages.length?`
+              <div class="section">
+                <div class="section-title">Images sur marqueurs</div>
+                <div class="section-body" style="gap:12px;">
+                  ${markersImages.map(([key,img])=>`
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      <div style="font-weight:700;font-size:13px;">[[IMG:${escapeHtml(key)}]]</div>
+                      <img src="${escapeHtml(img)}" style="max-width:${widthFor('marker:' + key)};border:1px solid #ddd;border-radius:6px;" />
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            `:""}
+          </div>
+        </div>
+      `;
+      attachInlineEditors();
+    }
+
+function attachInlineEditors(){
+      // Sync heading edits
+      qsa("[data-heading-edit]").forEach((el)=>{
+        el.addEventListener("input",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-edit"));
+          const txt = e.target.innerText;
+          const next = [...state.headingChoices];
+          const currentChoice = next[idx] || {mode:"auto", text:""};
+          // Passer en mode custom pour conserver les modifications manuelles
+          next[idx] = {mode:"custom", text: txt};
+          state.headingChoices = next;
+          // Mettre à jour le panneau de gauche si nécessaire
+          const textarea = qs(`textarea[data-heading-text="${idx}"]`);
+          if(textarea) textarea.value = txt;
+        });
+      });
+
+      // Sync field edits from preview
+      qsa(".editable-field[data-field]").forEach((el)=>{
+        el.addEventListener("input",(e)=>{
+          const field = e.target.getAttribute("data-field");
+          const value = e.target.innerText;
+          state.values[field] = value;
+          // Update corresponding input in left panel
+          const inp = qs(`input[data-ph="${field}"]`);
+          if(inp) inp.value = value;
+        });
+
+        // Prevent newlines in inline edits
+        el.addEventListener("keydown",(e)=>{
+          if(e.key === "Enter"){
+            e.preventDefault();
+          }
+        });
+      });
+
+      // Handle "+ Texte" buttons in preview - même modal que le panneau gauche
+      qsa("button[data-add-text-preview]").forEach((btn)=>{
+        // Trigger le même event que le bouton du panneau gauche
+        btn.addEventListener("click", (e)=>{
+          e.preventDefault();
+          const headingIdx = Number(btn.getAttribute("data-add-text-preview"));
+          // Trouver le bouton correspondant dans le panneau gauche et le cliquer
+          const leftBtn = qs(`button[data-add-text-block="${headingIdx}"]`);
+          if(leftBtn) leftBtn.click();
+        });
+      });
+
+      // Handle "+ Image" buttons in preview - même logique que le panneau gauche
+      qsa("button[data-add-image-preview]").forEach((btn)=>{
+        btn.addEventListener("click", (e)=>{
+          e.preventDefault();
+          const headingIdx = Number(btn.getAttribute("data-add-image-preview"));
+          // Trouver le bouton correspondant dans le panneau gauche et le cliquer
+          const leftBtn = qs(`button[data-add-image-block="${headingIdx}"]`);
+          if(leftBtn) leftBtn.click();
+        });
+      });
+
+      // Handle image drop zones for markers
+      qsa(".image-drop-zone[data-marker]").forEach((zone)=>{
+        const marker = zone.getAttribute("data-marker");
+        setupImageDropZone(zone, async (file)=>{
+          const uploaded = await uploadImage(file);
+          if(uploaded){
+            state.imagesAtMarkers[marker] = uploaded;
+            state.imageWidths[`marker:${marker}`] = state.imageWidthCm;
+            renderLayout();
+            renderPreview();
+          }
+        });
+      });
+
+      // Handle image drop zones for headings
+      qsa(".image-drop-zone[data-heading]").forEach((zone)=>{
+        const heading = zone.getAttribute("data-heading");
+        setupImageDropZone(zone, async (file)=>{
+          const uploaded = await uploadImage(file);
+          if(uploaded){
+            state.imagesAfterHeadings[heading] = uploaded;
+            state.imageWidths[`heading:${heading}`] = state.imageWidthCm;
+            renderLayout();
+            renderPreview();
+          }
+        });
+      });
+
+      // Handle image removal buttons for markers
+      qsa("button[data-remove-marker]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const marker = btn.getAttribute("data-remove-marker");
+          delete state.imagesAtMarkers[marker];
+          delete state.imageWidths[`marker:${marker}`];
+          // NE PAS supprimer le texte - il reste indépendant
+          // delete state.imageTexts[`marker:${marker}`];
+          renderPreview();
+        });
+      });
+
+      // Handle image removal buttons for headings
+      qsa("button[data-remove-heading]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const heading = btn.getAttribute("data-remove-heading");
+          delete state.imagesAfterHeadings[heading];
+          delete state.imageWidths[`heading:${heading}`];
+          // NE PAS supprimer le texte - il reste indépendant
+          // delete state.imageTexts[`heading:${heading}`];
+          renderPreview();
+        });
+      });
+
+      // Handle image width sliders
+      qsa("input[data-img-width]").forEach((slider)=>{
+        slider.addEventListener("input",(e)=>{
+          const key = e.target.getAttribute("data-img-width");
+          state.imageWidths[key] = parseFloat(e.target.value);
+          renderPreview();
+        });
+      });
+
+      // Handle predefined phrase selection
+      qsa("select[data-img-template]").forEach((select)=>{
+        select.addEventListener("change",(e)=>{
+          const key = e.target.getAttribute("data-img-template");
+          const idx = e.target.value;
+          if(idx !== ""){
+            const phrase = PREDEFINED_PHRASES[parseInt(idx)];
+            if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+            const pos = state.imageTexts[key].position || "after";
+            state.imageTexts[key][pos] = phrase;
+            if(state.imageTexts[key].position === "none") state.imageTexts[key].position = "after";
+            renderPreview();
+          }
+        });
+      });
+
+      // Handle text position buttons
+      qsa("button[data-img-text-pos]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const key = btn.getAttribute("data-img-text-pos");
+          const pos = btn.getAttribute("data-pos");
+          if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+          state.imageTexts[key].position = pos;
+          renderPreview();
+        });
+      });
+
+      // Handle custom text input
+      qsa("textarea[data-img-custom-text]").forEach((textarea)=>{
+        textarea.addEventListener("input",(e)=>{
+          const key = e.target.getAttribute("data-img-custom-text");
+          const text = e.target.value;
+          if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+          const pos = state.imageTexts[key].position || "after";
+          state.imageTexts[key][pos] = text;
+          if(state.imageTexts[key].position === "none" && text) state.imageTexts[key].position = "after";
+        });
+      });
+
+      // Handle contenteditable text before/after images
+      qsa("[data-img-text-before], [data-img-text-after]").forEach((el)=>{
+        el.addEventListener("input",(e)=>{
+          const key = e.target.getAttribute("data-img-text-before") || e.target.getAttribute("data-img-text-after");
+          const isBefore = e.target.hasAttribute("data-img-text-before");
+          const text = e.target.innerText;
+          if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+          if(isBefore) state.imageTexts[key].before = text;
+          else state.imageTexts[key].after = text;
+        });
+      });
+
+      // Handle text removal buttons (independent of images)
+      qsa("button[data-remove-text]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          const key = btn.getAttribute("data-remove-text");
+          const textType = btn.getAttribute("data-text-type");
+          if(state.imageTexts[key]){
+            if(textType === "before"){
+              state.imageTexts[key].before = "";
+            } else if(textType === "after"){
+              state.imageTexts[key].after = "";
+            }
+            // Si plus de texte, revenir à "none"
+            if(!state.imageTexts[key].before && !state.imageTexts[key].after){
+              state.imageTexts[key].position = "none";
+            }
+          }
+          renderPreview();
+        });
+      });
+    }
+
+    function setupImageDropZone(zone, onDrop){
+      zone.addEventListener("dragover",(e)=>{
+        e.preventDefault();
+        zone.classList.add("dragover");
+      });
+      zone.addEventListener("dragleave",()=>{
+        zone.classList.remove("dragover");
+      });
+      zone.addEventListener("drop",async (e)=>{
+        e.preventDefault();
+        zone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        // Accepter les images classiques et les fichiers .heic/.heif
+        const isImage = file && (file.type.startsWith("image/") || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif'));
+        if(isImage){
+          await onDrop(file);
+        }
+      });
+      zone.addEventListener("click",()=>{
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*,.heic,.heif";
+        input.onchange = async (e)=>{
+          const file = e.target.files[0];
+          if(file) await onDrop(file);
+        };
+        input.click();
+      });
+    }
+
+    async function uploadImage(file){
+      try{
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/upload", {method:"POST", body: fd});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.detail||"Upload échoué");
+        return data.path;
+      }catch(err){
+        console.error("Upload error:", err);
+        state.status = "Erreur upload image";
+        updateStatus();
+        return null;
+      }
+    }
+
+    function renderLayout(){
+      const app = qs("#app");
+      // Sauvegarder la position de scroll des panneaux gauche et droit
+      const leftPanel = qs("#leftPanel");
+      const leftPanelScrollTop = leftPanel ? leftPanel.scrollTop : 0;
+      const rightPreview = qs("#rightPreview");
+      const rightPreviewScrollTop = rightPreview ? rightPreview.scrollTop : 0;
+      const inputsHtml = state.placeholders.map((ph)=>`
+        <div><label>${escapeHtml(ph)}</label>
+        <input data-ph="${escapeHtml(ph)}" value="${escapeHtml(state.values[ph]||"")}" /></div>`).join("");
+      const headingsHtml = state.headings.map((title,idx)=>{
+        const choice = state.headingChoices[idx] || {mode:"auto", text:""};
+        const defText = defaultPhrase(state.values);
+        const blocks = state.headingContent[title] || [];
+
+        const blocksHtml = blocks.map((block, blockIdx) => {
+          if(block.type === "text"){
+            return `
+              <div class="content-block" draggable="true" data-block-idx="${blockIdx}" data-heading-idx="${idx}" style="padding:8px;background:#0f141b;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+                <span style="cursor:move;color:var(--muted);">☰</span>
+                <span style="flex:1;font-size:12px;">${escapeHtml(block.content.substring(0,60))}...</span>
+                <button type="button" data-edit-block="${idx},${blockIdx}" style="padding:4px 8px;font-size:11px;">✎</button>
+                <button type="button" data-remove-block="${idx},${blockIdx}" style="padding:4px 8px;font-size:11px;background:#ff4444;">×</button>
+              </div>
+            `;
+          } else if(block.type === "image"){
+            return `
+              <div class="content-block" draggable="true" data-block-idx="${blockIdx}" data-heading-idx="${idx}" style="padding:8px;background:#0f141b;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+                <span style="cursor:move;color:var(--muted);">☰</span>
+                <img src="${escapeHtml(block.src)}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;" />
+                <span style="flex:1;font-size:12px;">${escapeHtml(block.src.split('/').pop())}</span>
+                <button type="button" data-edit-block="${idx},${blockIdx}" style="padding:4px 8px;font-size:11px;">⚙</button>
+                <button type="button" data-remove-block="${idx},${blockIdx}" style="padding:4px 8px;font-size:11px;background:#ff4444;">×</button>
+              </div>
+            `;
+          }
+          return "";
+        }).join("");
+
+        return `
+          <div class="heading-card" data-heading-card="${idx}" style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:10px">
+            <label style="display:block;margin-bottom:6px;font-weight:600;">${escapeHtml(title)}</label>
+            <div style="display:flex;gap:8;margin-bottom:8px;">
+              ${["custom","none"].map(mode=>`
+                <button type="button" data-heading="${idx}" data-mode="${mode}" style="
+                  flex:1;padding:8px 10px;border-radius:8px;
+                  border:1px solid ${(choice.mode===mode || (choice.mode==="auto" && mode==="custom"))?"var(--accent)":"var(--border)"};
+                  background:${(choice.mode===mode || (choice.mode==="auto" && mode==="custom"))?"rgba(51,195,240,0.15)":"#0f141b"};
+                  color:#e6edf3;cursor:pointer;">
+                  ${mode==="custom"?"Personnalisée":"Supprimer"}
+                </button>
+              `).join("")}
+            </div>
+            ${choice.mode==="custom" || choice.mode==="auto"?`
+              <div style="margin-bottom:8px;">
+                <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Phrases types :</label>
+                <select data-heading-phrase="${idx}" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;margin-bottom:8px;">
+                  <option value="">-- Choisir une phrase type --</option>
+                  ${PREDEFINED_PHRASES.map((p,i)=>`<option value="${i}">${escapeHtml(p.substring(0,80))}${p.length > 80 ? '...' : ''}</option>`).join("")}
+                </select>
+              </div>
+              <textarea data-heading-text="${idx}" rows="2" placeholder="${escapeHtml(defText)}">${escapeHtml(choice.text||"")}</textarea>
+            `:""}
+
+            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Contenu additionnel (${blocks.length} blocs)</div>
+              <div class="blocks-container" data-heading-idx="${idx}">
+                ${blocksHtml}
+              </div>
+              <div style="display:flex;gap:6px;margin-top:8px;">
+                <button type="button" data-add-text-block="${idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;">+ Texte</button>
+                <button type="button" data-add-image-block="${idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;">+ Image</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      app.innerHTML = `
+        <header>
+          <div><div style="font-size:20px;font-weight:700;">Rapport Auto</div>
+          <div style="color:var(--muted);font-size:13px;">Placeholders & Rendu HTML</div></div>
+          <div style="display:flex;gap:16px;align-items:flex-end;">
+            <div style="min-width:200px;">
+              <label style="font-size:12px;color:var(--muted);">Trame</label>
+              <select id="templateSelect" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;">
+                ${state.templates.map(t=>`<option value="${escapeHtml(t)}" ${state.template===t?"selected":""}>${escapeHtml(t)}</option>`).join("")}
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:12px;color:var(--muted);">Phrase type pour tous les titres</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select id="globalPhraseSelect" style="min-width:300px;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;">
+                  <option value="">-- Choisir une phrase type --</option>
+                  ${PREDEFINED_PHRASES.map((p,i)=>`<option value="${i}" ${state.globalPhraseIndex===i?"selected":""}>${escapeHtml(p.substring(0,60))}${p.length > 60 ? '...' : ''}</option>`).join("")}
+                </select>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;white-space:nowrap;">
+                  <input type="checkbox" id="showGlobalPhraseCheckbox" ${state.showDefaultPhrases?"checked":""} style="width:auto;cursor:pointer;" />
+                  <span>Activer</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="grid">
+          <div class="panel" id="leftPanel">
+            <div class="template-bar">
+              ${state.templates.map((t)=>`
+                <div class="template-pill ${state.template===t?"active":""}" data-template-choice="${escapeHtml(t)}">${escapeHtml(t)}</div>
+              `).join("")}
+            </div>
+            <div style="font-weight:600;margin-bottom:12px;">Champs</div>
+            <form id="mainForm" class="inputs">
+              ${inputsHtml}
+              ${state.headings.length?`
+                <div>
+                  <div style="font-weight:600;margin-top:16px;margin-bottom:8px;">Titres</div>
+                  ${headingsHtml}
+                </div>`:""}
+              <div style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;">
+                <div style="font-weight:600;margin-bottom:8px;">Images sur marqueurs</div>
+                <label for="markerInput" style="font-size:12px;color:var(--muted);">Nom du marqueur (ex: [[IMG:monTag]] → monTag)</label>
+                <input id="markerInput" placeholder="monTag" style="width:100%;margin:6px 0 10px 0;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;" />
+                <div id="dropzoneMarkers" style="height:90px;border:1px dashed var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;">
+                  Déposez une image ici ou cliquez pour choisir
+                  <input type="file" id="fileInputMarkers" accept="image/*,.heic,.heif" style="display:none;" />
+                </div>
+                <div id="uploadStatusMarkers" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
+              </div>
+              <div style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;">
+                <div style="font-weight:600;margin-bottom:8px;">Taille des images</div>
+                <label for="imageWidthRange" style="font-size:12px;color:var(--muted);">Largeur max (cm)</label>
+                <input id="imageWidthRange" type="range" min="3" max="20" step="0.5" value="${state.imageWidthCm}" style="width:100%;margin-top:6px;" />
+                <div id="imageWidthValue" style="font-size:12px;color:var(--muted);margin-top:4px;">${state.imageWidthCm.toFixed(1)} cm</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                <input type="checkbox" id="overwriteOutput" ${state.overwrite?"checked":""} />
+                <label for="overwriteOutput" style="font-size:13px;color:var(--muted);">Écraser le fichier de sortie existant</label>
+              </div>
+              <div style="display:flex;gap:8;margin-top:12px;">
+                <button type="submit">Exporter DOCX</button>
+                <button type="button" id="printBtn">Imprimer</button>
+              </div>
+              <div class="status" id="status">${escapeHtml(state.status)}</div>
+            </form>
+          </div>
+          <div class="preview" id="rightPreview"><div id="preview"></div></div>
+        </div>
+      `;
+
+      attachHandlers();
+      renderPreview();
+
+      // Restaurer les positions de scroll APRÈS tous les rendus avec un délai plus long et scrollTo forcé
+      setTimeout(() => {
+        const newLeftPanel = qs("#leftPanel");
+        if(newLeftPanel && leftPanelScrollTop > 0) {
+          newLeftPanel.scrollTop = leftPanelScrollTop;
+          newLeftPanel.scrollTo({top: leftPanelScrollTop, behavior: 'instant'});
+        }
+        const newRightPreview = qs("#rightPreview");
+        if(newRightPreview && rightPreviewScrollTop > 0) {
+          newRightPreview.scrollTop = rightPreviewScrollTop;
+          newRightPreview.scrollTo({top: rightPreviewScrollTop, behavior: 'instant'});
+        }
+
+        // Vérifier et réappliquer si nécessaire après un court délai
+        setTimeout(() => {
+          const checkLeft = qs("#leftPanel");
+          const checkRight = qs("#rightPreview");
+          if(checkLeft && checkLeft.scrollTop !== leftPanelScrollTop && leftPanelScrollTop > 0) {
+            checkLeft.scrollTop = leftPanelScrollTop;
+            checkLeft.scrollTo({top: leftPanelScrollTop, behavior: 'instant'});
+          }
+          if(checkRight && checkRight.scrollTop !== rightPreviewScrollTop && rightPreviewScrollTop > 0) {
+            checkRight.scrollTop = rightPreviewScrollTop;
+            checkRight.scrollTo({top: rightPreviewScrollTop, behavior: 'instant'});
+          }
+        }, 50);
+      }, 10);
+    }
+
+    function attachHandlers(){
+      // Gestion des blocs de contenu
+      qsa("button[data-add-text-block]").forEach((btn)=>{
+        btn.addEventListener("click", async (e)=>{
+          e.preventDefault();
+          const headingIdx = Number(btn.getAttribute("data-add-text-block"));
+          const title = state.headings[headingIdx];
+
+          // Créer un modal personnalisé pour sélectionner une phrase type
+          const modal = document.createElement("div");
+          modal.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;";
+
+          const dialog = document.createElement("div");
+          dialog.style.cssText = "background:var(--panel);padding:24px;border-radius:12px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;border:1px solid var(--border);";
+
+          dialog.innerHTML = `
+            <h3 style="margin:0 0 16px 0;color:var(--text);">Ajouter une phrase type</h3>
+            <div style="margin-bottom:16px;">
+              <label style="display:block;margin-bottom:8px;color:var(--muted);font-size:12px;">Sélectionner une phrase prédéfinie :</label>
+              <select id="phraseSelector" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:#0f141b;color:var(--text);margin-bottom:12px;">
+                <option value="">-- Choisir une phrase type --</option>
+                ${PREDEFINED_PHRASES.map((p,i)=>`<option value="${i}">${escapeHtml(p.substring(0,80))}${p.length > 80 ? '...' : ''}</option>`).join("")}
+                <option value="custom">✎ Personnaliser une phrase</option>
+              </select>
+            </div>
+            <div id="customTextArea" style="display:none;margin-bottom:16px;">
+              <label style="display:block;margin-bottom:8px;color:var(--muted);font-size:12px;">Texte personnalisé :</label>
+              <textarea id="customText" rows="4" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:#0f141b;color:var(--text);"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+              <button id="cancelBtn" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:#0f141b;color:var(--text);cursor:pointer;">Annuler</button>
+              <button id="confirmBtn" style="padding:10px 20px;border-radius:8px;border:none;background:linear-gradient(120deg,#33c3f0,#4be1ec);color:#0b0f14;font-weight:600;cursor:pointer;">Ajouter</button>
+            </div>
+          `;
+
+          modal.appendChild(dialog);
+          document.body.appendChild(modal);
+
+          const selector = dialog.querySelector("#phraseSelector");
+          const customArea = dialog.querySelector("#customTextArea");
+          const customText = dialog.querySelector("#customText");
+          const cancelBtn = dialog.querySelector("#cancelBtn");
+          const confirmBtn = dialog.querySelector("#confirmBtn");
+
+          // Afficher/masquer la zone de texte personnalisé
+          selector.addEventListener("change", (e)=>{
+            if(e.target.value === "custom"){
+              customArea.style.display = "block";
+              customText.value = "";
+              customText.focus();
+            } else if(e.target.value !== ""){
+              customArea.style.display = "block";
+              customText.value = PREDEFINED_PHRASES[parseInt(e.target.value)];
+            } else {
+              customArea.style.display = "none";
+            }
+          });
+
+          // Gestion des boutons
+          cancelBtn.addEventListener("click", ()=>{
+            document.body.removeChild(modal);
+          });
+
+          confirmBtn.addEventListener("click", ()=>{
+            let text = "";
+            if(selector.value === "custom" || selector.value !== ""){
+              text = customText.value.trim();
+            }
+
+            if(!text){
+              alert("Veuillez saisir ou sélectionner un texte");
+              return;
+            }
+
+            if(!state.headingContent[title]) state.headingContent[title] = [];
+            state.headingContent[title].push({type: "text", content: text});
+            document.body.removeChild(modal);
+            renderLayout();
+            renderPreview();
+          });
+
+          // Fermer si on clique en dehors
+          modal.addEventListener("click", (e)=>{
+            if(e.target === modal){
+              document.body.removeChild(modal);
+            }
+          });
+        });
+      });
+
+      qsa("button[data-add-image-block]").forEach((btn)=>{
+        btn.addEventListener("click", async (e)=>{
+          e.preventDefault();
+          const headingIdx = Number(btn.getAttribute("data-add-image-block"));
+          const title = state.headings[headingIdx];
+
+          // Ouvrir un dialogue de sélection de fichier
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*,.heic,.heif";
+          input.onchange = async (e)=>{
+            const file = e.target.files[0];
+            if(!file) return;
+            const uploaded = await uploadImage(file);
+            if(uploaded){
+              if(!state.headingContent[title]) state.headingContent[title] = [];
+              state.headingContent[title].push({
+                type: "image",
+                src: uploaded,
+                width: state.imageWidthCm
+              });
+              renderLayout();
+              renderPreview();
+            }
+          };
+          input.click();
+        });
+      });
+
+      qsa("button[data-remove-block]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const [headingIdx, blockIdx] = btn.getAttribute("data-remove-block").split(",").map(Number);
+          const title = state.headings[headingIdx];
+          if(state.headingContent[title]){
+            state.headingContent[title].splice(blockIdx, 1);
+            renderLayout();
+            renderPreview();
+          }
+        });
+      });
+
+      qsa("button[data-edit-block]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const [headingIdx, blockIdx] = btn.getAttribute("data-edit-block").split(",").map(Number);
+          const title = state.headings[headingIdx];
+          const block = state.headingContent[title]?.[blockIdx];
+          if(!block) return;
+
+          if(block.type === "text"){
+            const newText = prompt("Modifier le texte:", block.content);
+            if(newText !== null){
+              block.content = newText;
+              renderLayout();
+              renderPreview();
+            }
+          } else if(block.type === "image"){
+            const newWidth = prompt("Modifier la largeur (cm):", block.width || state.imageWidthCm);
+            if(newWidth !== null){
+              block.width = parseFloat(newWidth) || state.imageWidthCm;
+              renderLayout();
+              renderPreview();
+            }
+          }
+        });
+      });
+
+      // Drag & Drop pour réordonner les blocs
+      let draggedBlock = null;
+      qsa(".content-block").forEach((block)=>{
+        block.addEventListener("dragstart",(e)=>{
+          draggedBlock = {
+            headingIdx: Number(block.getAttribute("data-heading-idx")),
+            blockIdx: Number(block.getAttribute("data-block-idx"))
+          };
+          block.style.opacity = "0.5";
+        });
+
+        block.addEventListener("dragend",(e)=>{
+          block.style.opacity = "1";
+          draggedBlock = null;
+        });
+
+        block.addEventListener("dragover",(e)=>{
+          e.preventDefault();
+          block.style.borderTop = "2px solid var(--accent)";
+        });
+
+        block.addEventListener("dragleave",(e)=>{
+          block.style.borderTop = "";
+        });
+
+        block.addEventListener("drop",(e)=>{
+          e.preventDefault();
+          block.style.borderTop = "";
+
+          if(!draggedBlock) return;
+
+          const targetHeadingIdx = Number(block.getAttribute("data-heading-idx"));
+          const targetBlockIdx = Number(block.getAttribute("data-block-idx"));
+
+          // Uniquement si dans le même heading
+          if(draggedBlock.headingIdx !== targetHeadingIdx) return;
+
+          const title = state.headings[targetHeadingIdx];
+          const blocks = state.headingContent[title];
+          if(!blocks) return;
+
+          // Réordonner
+          const [movedBlock] = blocks.splice(draggedBlock.blockIdx, 1);
+          blocks.splice(targetBlockIdx, 0, movedBlock);
+
+          renderLayout();
+          renderPreview();
+        });
+      });
+
+      // Trame (templates)
+      qsa("button[data-heading]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const idx = Number(btn.getAttribute("data-heading"));
+          const mode = btn.getAttribute("data-mode");
+          const next=[...state.headingChoices];
+          const prevText = next[idx]?.text || "";
+          next[idx] = {mode, text: mode==="custom"?prevText:""};
+          state.headingChoices = next;
+          renderLayout();
+        });
+      });
+
+      qsa("textarea[data-heading-text]").forEach((ta)=>{
+        ta.addEventListener("input",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-text"));
+          const next=[...state.headingChoices];
+          next[idx] = {mode:"custom", text:e.target.value};
+          state.headingChoices = next;
+          renderPreview();
+        });
+      });
+
+      qsa("select[data-heading-phrase]").forEach((sel)=>{
+        sel.addEventListener("change",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-phrase"));
+          const phraseIdx = e.target.value;
+          if(phraseIdx !== ""){
+            const phraseTemplate = PREDEFINED_PHRASES[parseInt(phraseIdx)];
+            const phrase = fillPhrase(phraseTemplate);
+            const next=[...state.headingChoices];
+            const currentMode = next[idx]?.mode || "auto";
+            next[idx] = {mode: currentMode, text: phrase};
+            state.headingChoices = next;
+            // Mettre à jour le textarea correspondant
+            const textarea = qs(`textarea[data-heading-text="${idx}"]`);
+            if(textarea) textarea.value = phrase;
+            renderPreview();
+            renderLayout();
+          }
+        });
+      });
+
+      qsa("[data-template-choice]").forEach((el)=>{
+        el.addEventListener("click", (e)=>{
+          const val = e.currentTarget.getAttribute("data-template-choice");
+          state.template = val;
+          loadTemplateData(val);
+        });
+      });
+      const tplSelect = qs("#templateSelect");
+      if(tplSelect){
+        tplSelect.addEventListener("change",(e)=>{
+          const val=e.target.value;
+          loadTemplateData(val);
+        });
+      }
+      const globalPhraseSelect = qs("#globalPhraseSelect");
+      if(globalPhraseSelect){
+        globalPhraseSelect.addEventListener("change",(e)=>{
+          const phraseIdx = e.target.value;
+          state.globalPhraseIndex = phraseIdx !== "" ? parseInt(phraseIdx) : null;
+          console.log("[DEBUG] Phrase selected:", phraseIdx, "=>", state.globalPhraseIndex, "Phrase:", PREDEFINED_PHRASES[state.globalPhraseIndex]);
+          renderLayout();
+          renderPreview();
+        });
+      }
+      const showGlobalPhraseCheckbox = qs("#showGlobalPhraseCheckbox");
+      if(showGlobalPhraseCheckbox){
+        showGlobalPhraseCheckbox.addEventListener("change",(e)=>{
+          state.showDefaultPhrases = e.target.checked;
+          console.log("[DEBUG] Checkbox toggled:", e.target.checked, "globalPhraseIndex:", state.globalPhraseIndex);
+          renderLayout();
+          renderPreview();
+        });
+      }
+      const overwriteCheckbox = qs("#overwriteOutput");
+      if(overwriteCheckbox){
+        overwriteCheckbox.addEventListener("change",(e)=>{ state.overwrite = e.target.checked; });
+      }
+      const imageWidthRange = qs("#imageWidthRange");
+      if(imageWidthRange){
+        imageWidthRange.addEventListener("input",(e)=>{
+          state.imageWidthCm = parseFloat(e.target.value)||7.5;
+          const label=qs("#imageWidthValue");
+          if(label) label.textContent = `${state.imageWidthCm.toFixed(1)} cm`;
+          renderPreview();
+        });
+      }
+
+      qsa("input[data-ph]").forEach((inp)=>{
+        inp.addEventListener("input",(e)=>{
+          const ph = e.target.getAttribute("data-ph");
+          state.values[ph] = e.target.value;
+          renderPreview();
+        });
+      });
+
+      qsa("button[data-heading]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const idx = Number(btn.getAttribute("data-heading"));
+          const mode = btn.getAttribute("data-mode");
+          const next=[...state.headingChoices];
+          const prevText = next[idx]?.text || "";
+          next[idx] = {mode, text: mode==="custom"?prevText:""};
+          state.headingChoices = next;
+          renderLayout();
+        });
+      });
+
+      qsa("textarea[data-heading-text]").forEach((ta)=>{
+        ta.addEventListener("input",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-text"));
+          const next=[...state.headingChoices];
+          next[idx] = {mode:"custom", text:e.target.value};
+          state.headingChoices = next;
+          renderPreview();
+        });
+      });
+
+      const form = qs("#mainForm");
+      if(form){
+        form.addEventListener("submit", async (e)=>{
+          e.preventDefault();
+          state.status = "Génération en cours...";
+          updateStatus();
+          try{
+            const decisions = state.headings.map((heading,idx)=>{
+              const choice = state.headingChoices[idx]||{mode:"auto",text:""};
+
+              // Debug log
+              console.log(`[DECISION] Heading "${heading}":`, {
+                mode: choice.mode,
+                text: choice.text,
+                hasContent: state.headingContent[heading]?.length > 0,
+                showGlobal: state.showDefaultPhrases,
+                globalIdx: state.globalPhraseIndex
+              });
+
+              if(choice.mode==="none") return "";
+
+              // PRIORITÉ 1: Si la phrase globale est activée, l'utiliser pour tous les titres
+              if(state.showDefaultPhrases && state.globalPhraseIndex !== null) {
+                const phraseTemplate = PREDEFINED_PHRASES[state.globalPhraseIndex];
+                return fillPhrase(phraseTemplate).trim();
+              }
+
+              // PRIORITÉ 2: Si l'utilisateur a saisi un texte personnalisé, l'utiliser (peu importe le mode)
+              if(choice.text && choice.text.trim()) {
+                console.log(`[DECISION] Using custom text for "${heading}": "${choice.text.trim()}"`);
+                return choice.text.trim();
+              }
+
+              // PRIORITÉ 3: Si heading_content contient du contenu (images/texte), garder le titre avec phrase par défaut
+              if(state.headingContent[heading] && state.headingContent[heading].length > 0) {
+                return "__DEFAULT__";
+              }
+
+              // PRIORITÉ 4: Par défaut, garder le titre avec phrase par défaut
+              return "__DEFAULT__";
+            });
+            // Prepare image_texts for backend
+            const imageTextsForBackend = {};
+            Object.entries(state.imageTexts || {}).forEach(([key, data]) => {
+              // Remove prefix (heading: or marker:) from key
+              const cleanKey = key.replace(/^(heading|marker):/, "");
+              imageTextsForBackend[cleanKey] = data;
+            });
+
+            // Convert headingContent to backend format
+            const headingContentForBackend = {};
+            Object.entries(state.headingContent).forEach(([heading, blocks]) => {
+              headingContentForBackend[heading] = blocks.map(block => ({
+                type: block.type,
+                content: block.type === "text" ? block.content : undefined,
+                src: block.type === "image" ? block.src : undefined,
+                width: block.type === "image" ? Math.max(1, (block.width || state.imageWidthCm) / 2.54) : undefined
+              }));
+            });
+
+            const response = await fetch("/generate",{
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({
+                template: state.template,
+                overwrite: true,
+                image_width_inches: Math.max(1, state.imageWidthCm/2.54),
+                mapping: state.values,
+                decisions,
+                heading_content: headingContentForBackend,
+                images_at_markers: state.imagesAtMarkers,
+                images_at_markers_sizes: Object.fromEntries(Object.entries(state.imageWidths||{}).filter(([k])=>k.startsWith("marker:")).map(([k,v])=>[k.replace("marker:",""), Math.max(1,v/2.54)])),
+              })
+            });
+            if (response.ok) {
+              // Fichier écrasé directement sur le serveur
+              state.status = "DOCX généré et enregistré avec succès";
+            } else {
+              state.status = "Erreur lors de la génération";
+            }
+          }catch(err){
+            state.status = "Erreur lors de la génération";
+          }
+          updateStatus();
+        });
+      }
+
+      const printBtn = qs("#printBtn");
+      if(printBtn) printBtn.addEventListener("click",()=>window.print());
+
+
+      const dropzoneMarkers = qs("#dropzoneMarkers");
+      const fileInputMarkers = qs("#fileInputMarkers");
+      const uploadStatusMarkers = qs("#uploadStatusMarkers");
+      const markerInput = qs("#markerInput");
+      const markerImageWidth = qs("#markerImageWidth");
+      const markerImageWidthValue = qs("#markerImageWidthValue");
+      const markerImageWidthWrap = qs("#markerImageWidthWrap");
+      const updateMarkerWidthUI = ()=>{
+        if(!markerInput || !markerImageWidth || !markerImageWidthValue || !markerImageWidthWrap) return;
+        const key = (markerInput.value||"").trim();
+        if(key && state.imagesAtMarkers[key]){
+          const cm = state.imageWidths[`marker:${key}`] ?? state.imageWidthCm;
+          markerImageWidth.value = cm;
+          markerImageWidthValue.textContent = `${cm.toFixed(1)} cm`;
+          markerImageWidthWrap.style.display = "block";
+        } else {
+          markerImageWidthWrap.style.display = "none";
+        }
+      };
+      if(markerImageWidth){
+        markerImageWidth.addEventListener("input",(e)=>{
+          const key = (markerInput.value||"").trim();
+          if(!key) return;
+          const cm = parseFloat(e.target.value)||state.imageWidthCm;
+          state.imageWidths[`marker:${key}`]=cm;
+          if(markerImageWidthValue) markerImageWidthValue.textContent = `${cm.toFixed(1)} cm`;
+          renderPreview();
+        });
+      }
+      if(markerInput){
+        markerInput.addEventListener("input",updateMarkerWidthUI);
+      }
+      if(dropzoneMarkers && fileInputMarkers && markerInput){
+        const doUploadMarker = async (file)=>{
+          const key = (markerInput.value||"").trim();
+          if(!key){ uploadStatusMarkers.textContent="Choisissez un nom de marqueur"; return; }
+          if(!file) return;
+          uploadStatusMarkers.textContent="Upload...";
+          const fd=new FormData(); fd.append("file",file);
+          try{
+            const res = await fetch("/upload",{method:"POST", body: fd});
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail||"Upload échoué");
+            state.imagesAtMarkers[key]=data.path;
+            state.imageWidths[`marker:${key}`]=state.imageWidthCm;
+            uploadStatusMarkers.textContent=`Image attachée à [[IMG:${key}]]`;
+            renderPreview();
+            updateMarkerWidthUI();
+          }catch(err){ uploadStatusMarkers.textContent="Erreur upload"; }
+        };
+        dropzoneMarkers.addEventListener("dragover",(e)=>{e.preventDefault(); dropzoneMarkers.style.background="rgba(51,195,240,0.08)";});
+        dropzoneMarkers.addEventListener("dragleave",()=>{dropzoneMarkers.style.background="";});
+        dropzoneMarkers.addEventListener("drop",(e)=>{e.preventDefault(); dropzoneMarkers.style.background=""; const f=e.dataTransfer.files[0]; doUploadMarker(f);});
+        dropzoneMarkers.addEventListener("click",()=>fileInputMarkers.click());
+        fileInputMarkers.addEventListener("change",(e)=>{const f=e.target.files[0]; doUploadMarker(f);});
+      }
+    }
+
+    function updateStatus(){ const el=qs("#status"); if(el) el.textContent = state.status; }
+
+    async function loadTemplateData(templateName){
+      if(!templateName) return;
+      state.status="Chargement de la trame..."; updateStatus();
+      try{
+        const res = await fetch(`/placeholders?template=${encodeURIComponent(templateName)}`);
+        const d = await res.json();
+        if(!res.ok) throw new Error(d.detail||"Erreur placeholders");
+        state.template = d.template||templateName;
+        state.templates = d.templates||state.templates;
+        state.placeholders = d.placeholders||[];
+        state.headings = d.headings||[];
+        state.markers = d.markers||[];
+        state.values = Object.fromEntries(state.placeholders.map((p)=>[p,""]));
+        state.headingChoices = state.headings.map(()=>({mode:"auto",text:""}));
+        state.defaultTemplate = d.default_template||"";
+        state.headingContent = {};
+        state.imagesAtMarkers = {};
+        state.imageWidths = {};
+
+        // Charger l'en-tête depuis l'API preview
+        const previewRes = await fetch(`/preview?template=${encodeURIComponent(templateName)}`);
+        if(previewRes.ok){
+          const fullHtml = await previewRes.text();
+          // Extraire juste l'en-tête (la partie avant le premier contenu du body)
+          const match = fullHtml.match(/<div style="border-bottom: 2px solid #333[^>]*>[\s\S]*?<\/div>/);
+          if(match){
+            state.headerHtml = match[0];
+          }
+        }
+
+        state.status = "Trame chargée";
+        renderLayout();
+      }catch(err){
+        state.status="Erreur chargement trame"; updateStatus();
+      }
+    }
+
+    async function loadTemplates(){
+      try{
+        const res = await fetch("/templates");
+        const d = await res.json();
+        if(!res.ok) throw new Error(d.detail||"Erreur templates");
+        state.templates = d.templates||[];
+        if(!state.templates.length){
+          state.status="Aucune trame disponible"; renderLayout(); return;
+        }
+        const chosen = d.default || state.templates[0] || "";
+        state.template = chosen;
+        renderLayout();
+        if(chosen){ await loadTemplateData(chosen); }
+      }catch(err){
+        // fallback sur les trames locales par défaut
+        state.status="Erreur chargement des trames (mode dégradé)";
+        state.templates = ["test","test2"];
+        state.template = state.template || "test";
+        renderLayout();
+        await loadTemplateData(state.template);
+      }
+    }
+
+    async function init(){ renderLayout(); await loadTemplates(); }
+    init();
+  </script>
+</body>
+</html>

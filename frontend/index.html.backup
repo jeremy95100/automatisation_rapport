@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rapport Auto</title>
+  <style>
+    :root {
+      --bg: #0e1117; --panel: #161b22; --accent: #33c3f0;
+      --text: #e6edf3; --muted: #8b949e; --border: #30363d;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .template-bar { display:flex; gap:8px; padding:8px 0; }
+    .template-pill { padding:8px 12px; border:1px solid var(--border); border-radius:10px; cursor:pointer; color:var(--text); background:#0f141b; }
+    .template-pill.active { border-color: var(--accent); background: rgba(51,195,240,0.15); }
+    .grid { display:grid; grid-template-columns: 380px 1fr; height: calc(100vh - 64px); }
+    .panel { background: var(--panel); border-right:1px solid var(--border); padding:18px; overflow-y:auto; }
+    .preview { background:#c6c6c6; overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:24px; }
+    .rapport-wrapper { background:#c6c6c6; display:flex; justify-content:center; align-items:flex-start; padding:8px; }
+    .rapport-page { background:#fff; color:#000; width:820px; min-height:1120px; padding:20px 24px; box-shadow:0 2px 12px rgba(0,0,0,0.25); border:1px solid #ddd; }
+    .section { border:1px solid #000; margin-bottom:16px; }
+    .section-title { background:#dcdcdc; font-weight:700; text-align:center; padding:6px 8px; border-bottom:1px solid #000; font-size:13px; }
+    .section-body { padding:10px 12px; display:flex; flex-direction:column; gap:6px; font-size:13px; }
+    .pv-row { display:flex; gap:6px; font-size:13px; line-height:20px; }
+    .pv-label { font-weight:700; }
+    input, select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:#0f141b; color:var(--text); }
+    button { padding:12px 14px; border:none; border-radius:10px; background: linear-gradient(120deg,#33c3f0,#4be1ec); color:#0b0f14; font-weight:600; cursor:pointer; }
+    textarea { width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:#0f141b; color:#e6edf3; }
+    .status { font-size:12px; color:var(--muted); margin-top:12px; }
+    .editable-field { transition: all 0.2s ease; cursor: text; }
+    .editable-field:hover { border-bottom-color: var(--accent) !important; background: rgba(51,195,240,0.05); }
+    .editable-field:focus { outline: none; border-bottom-color: var(--accent) !important; background: rgba(51,195,240,0.1); }
+    .image-drop-zone { min-height: 100px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999; cursor: pointer; transition: all 0.3s ease; margin: 10px 0; }
+    .image-drop-zone:hover { border-color: var(--accent); background: rgba(51,195,240,0.05); color: var(--accent); }
+    .image-drop-zone.dragover { border-color: var(--accent); background: rgba(51,195,240,0.15); transform: scale(1.02); }
+    .image-container { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 10px 0; background: #f9f9f9; }
+    .image-preview-wrapper { position: relative; display: inline-block; width: 100%; }
+    .image-preview-wrapper img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; display: block; }
+    .image-controls { margin-top: 8px; padding: 8px; background: white; border-radius: 6px; border: 1px solid #ddd; }
+    .image-controls label { display: block; font-size: 11px; color: #666; margin-bottom: 4px; }
+    .image-controls input[type="range"] { width: 100%; }
+    .image-controls textarea { width: 100%; min-height: 60px; font-size: 12px; resize: vertical; }
+    .image-controls select { width: 100%; font-size: 12px; padding: 4px; margin-bottom: 6px; }
+    .image-remove-btn { position: absolute; top: 5px; right: 5px; background: #ff4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; z-index: 10; }
+    .image-remove-btn:hover { background: #cc0000; }
+    .text-position-btns { display: flex; gap: 4px; margin-bottom: 6px; }
+    .text-position-btns button { flex: 1; padding: 4px; font-size: 11px; }
+    @media(max-width:900px){ .grid{grid-template-columns:1fr; height:auto;} .preview{height:70vh;} .panel{border-right:none; border-bottom:1px solid var(--border);} }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const PREDEFINED_PHRASES = [
+      "Le smartphone est verrouillé par un code PIN à « X ». Il a été réinitialisé le « X » à « X ».",
+      "Les techniques d'investigations ont permis une exploitation complète des données du téléphone et de la carte SIM.",
+      "D'après les éléments, la période d'utilisation du téléphone s'étend du « X » au « X».",
+      "Les traces de « X » ont été retrouvées dans le téléphone portant « X » (carte SIM)",
+      "L'extraction partielle ne permet pas de mettre en évidence « X »",
+      "L'accès à l'intégralité des données de l'utilisateur n'a pas été possible.",
+      "L'adresse mail « X » a été associée au smartphone comme compte utilisateur «X »",
+      "Les applications de communication installées sont « X »",
+      "L'ensemble des conversations ont été réalisées en langue « X ».",
+      "Certaines conversations ont été réalisées en langue étrangère.",
+      "L'historique web de l'utilisateur du smartphone contient en majeure partie des recherches liées à « X ».",
+      "Du contenu en lien avec de la propagande l'état islamique apparait dans de nombreuses conversations.",
+      "Un compte « X » a été associé au smartphone « X »",
+      "Les données recueillies n'ont pas révélé d'éléments susceptible de constituer une infraction ou compromettant la sécurité pénitentiaire.",
+      "La date et l'heure de synchronisation du compte sur le smartphone sont inconnues.",
+      "Voici un tableau résumé des appels pour la plateforme « X » :",
+      "Voici un tableau résumé des conversations pour la plateforme « X » :",
+      "Ce graphique représente le volume de contacts par plateforme :",
+      "Ce graphique représente le nombre d'appels par plateforme :",
+      "Ce graphique représente le volume de messages par plateforme :",
+      "Ce graphique représente le volume de contacts par plateforme :",
+      "Ce graphique représente le top 15 des appels pour la plateforme « X » :",
+      "Ce graphique représente le top 15 des messages pour la plateforme « X » :",
+      "Ce graphique représente le top 15 de la durée des appels pour la plateforme « X » :",
+      "Les messages émis de l'appareil apparaissent dans des bulles de conversation entouré d'une couleur verte et les messages reçus de l'appareil sont entourés en gris.",
+      "Extrait d'une photo partagée dans la conversation réalisée entre l'utilisateur du téléphone vers l'interlocuteur « X » le « X ».",
+      "Extrait d'une conversation réalisée entre l'utilisateur du téléphone vers l'interlocuteur « X » le « X ».",
+      "Aucun élément relevé ne correspond à cette catégorie.",
+      "Sans objet."
+    ];
+
+    const state = {
+      placeholders: [], values: {}, status: "Prêt", headings: [], headingChoices: [],
+      defaultTemplate: "", imagesAfterHeadings: {}, imagesAtMarkers: {},
+      templates: ["test","test2"], template: "test", imageWidthCm: 7.5, overwrite: false,
+      imageWidths: {}, imageTexts: {}
+    };
+
+    const qs = (s)=>document.querySelector(s); const qsa=(s)=>Array.from(document.querySelectorAll(s));
+    const escapeHtml = (str)=>String(str||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const defaultPhrase = (mapping)=>{
+      let t = state.defaultTemplate || "";
+      Object.entries(mapping||{}).forEach(([k,v])=>{ t=t.replaceAll(k,v||""); });
+      return t;
+    };
+
+        function renderPreview(){
+      const preview = qs("#preview"); if(!preview) return;
+      const widthFor = (key)=>`${(state.imageWidths?.[key] ?? state.imageWidthCm)}cm`;
+      const v=(k)=>escapeHtml(state.values[k]||"");
+      const vEditable=(k)=>`<span contenteditable="true" data-field="${escapeHtml(k)}" style="display:inline-block;min-width:50px;border-bottom:1px dashed transparent;" class="editable-field">${escapeHtml(state.values[k]||"")}</span>`;
+      const renderedHeadings = state.headings.map((title,idx)=>{
+        const choice = state.headingChoices[idx]||{mode:"auto",text:""};
+        if(choice.mode==="none") return null;
+        const text = choice.mode==="custom" ? escapeHtml(choice.text||"") : escapeHtml(defaultPhrase(state.values));
+        const img = state.imagesAfterHeadings[title]||null;
+        return {title:escapeHtml(title), text, img, idx};
+      }).filter(Boolean);
+      const markersImages = Object.entries(state.imagesAtMarkers||{});
+      const markerImg = (key)=>{
+        const src = state.imagesAtMarkers?.[key];
+        if(!src){
+          return `<div class="image-drop-zone" data-marker="${escapeHtml(key)}">Glissez une image ici<br><small>[[IMG:${escapeHtml(key)}]]</small></div>`;
+        }
+        const imgKey = 'marker:' + key;
+        const width = state.imageWidths?.[imgKey] ?? state.imageWidthCm;
+        const textData = state.imageTexts?.[imgKey] || {before:"", after:"", position:"none"};
+        return `<div class="image-container">
+          ${textData.position==="before" && textData.before?`<div style="font-size:13px;margin-bottom:8px;" contenteditable="true" data-img-text-before="${escapeHtml(imgKey)}">${escapeHtml(textData.before)}</div>`:""}
+          <div class="image-preview-wrapper" data-marker="${escapeHtml(key)}">
+            <img src="${escapeHtml(src)}" style="max-width:${width}cm;" alt="marker ${escapeHtml(key)}" />
+            <button class="image-remove-btn" data-remove-marker="${escapeHtml(key)}">×</button>
+          </div>
+          ${textData.position==="after" && textData.after?`<div style="font-size:13px;margin-top:8px;" contenteditable="true" data-img-text-after="${escapeHtml(imgKey)}">${escapeHtml(textData.after)}</div>`:""}
+          <div class="image-controls">
+            <label>Taille: ${width.toFixed(1)} cm</label>
+            <input type="range" min="3" max="20" step="0.5" value="${width}" data-img-width="${escapeHtml(imgKey)}" />
+            <label style="margin-top:6px;">Texte avant/après:</label>
+            <select data-img-template="${escapeHtml(imgKey)}">
+              <option value="">-- Choisir une phrase type --</option>
+              ${PREDEFINED_PHRASES.map((p,i)=>`<option value="${i}">${escapeHtml(p.substring(0,50))}...</option>`).join("")}
+            </select>
+            <div class="text-position-btns">
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="before" style="background:${textData.position==='before'?'#33c3f0':'#ddd'}">Avant</button>
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="after" style="background:${textData.position==='after'?'#33c3f0':'#ddd'}">Après</button>
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="none" style="background:${textData.position==='none'?'#33c3f0':'#ddd'}">Aucun</button>
+            </div>
+            <textarea placeholder="Ou écrivez votre propre texte..." data-img-custom-text="${escapeHtml(imgKey)}">${escapeHtml(textData[textData.position]||"")}</textarea>
+          </div>
+        </div>`;
+      };
+
+      const headingImg = (title)=>{
+        const src = state.imagesAfterHeadings?.[title];
+        if(!src){
+          return `<div class="image-drop-zone" data-heading="${escapeHtml(title)}">Glissez une image pour ce titre</div>`;
+        }
+        const imgKey = 'heading:' + title;
+        const width = state.imageWidths?.[imgKey] ?? state.imageWidthCm;
+        const textData = state.imageTexts?.[imgKey] || {before:"", after:"", position:"none"};
+        return `<div class="image-container">
+          ${textData.position==="before" && textData.before?`<div style="font-size:13px;margin-bottom:8px;" contenteditable="true" data-img-text-before="${escapeHtml(imgKey)}">${escapeHtml(textData.before)}</div>`:""}
+          <div class="image-preview-wrapper" data-heading="${escapeHtml(title)}">
+            <img src="${escapeHtml(src)}" style="max-width:${width}cm;" alt="heading ${escapeHtml(title)}" />
+            <button class="image-remove-btn" data-remove-heading="${escapeHtml(title)}">×</button>
+          </div>
+          ${textData.position==="after" && textData.after?`<div style="font-size:13px;margin-top:8px;" contenteditable="true" data-img-text-after="${escapeHtml(imgKey)}">${escapeHtml(textData.after)}</div>`:""}
+          <div class="image-controls">
+            <label>Taille: ${width.toFixed(1)} cm</label>
+            <input type="range" min="3" max="20" step="0.5" value="${width}" data-img-width="${escapeHtml(imgKey)}" />
+            <label style="margin-top:6px;">Texte avant/après:</label>
+            <select data-img-template="${escapeHtml(imgKey)}">
+              <option value="">-- Choisir une phrase type --</option>
+              ${PREDEFINED_PHRASES.map((p,i)=>`<option value="${i}">${escapeHtml(p.substring(0,50))}...</option>`).join("")}
+            </select>
+            <div class="text-position-btns">
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="before" style="background:${textData.position==='before'?'#33c3f0':'#ddd'}">Avant</button>
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="after" style="background:${textData.position==='after'?'#33c3f0':'#ddd'}">Après</button>
+              <button data-img-text-pos="${escapeHtml(imgKey)}" data-pos="none" style="background:${textData.position==='none'?'#33c3f0':'#ddd'}">Aucun</button>
+            </div>
+            <textarea placeholder="Ou écrivez votre propre texte..." data-img-custom-text="${escapeHtml(imgKey)}">${escapeHtml(textData[textData.position]||"")}</textarea>
+          </div>
+        </div>`;
+      };
+
+      if(state.template==="test2"){
+        const headingsHtml = renderedHeadings.length?`
+          <div class="section">
+            <div class="section-title">Sections dynamiques</div>
+            <div class="section-body" style="gap:12px;">
+              ${renderedHeadings.map(item=>`
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <div style="font-weight:700;font-size:14px;">${item.title}</div>
+                  <div style="font-size:13px;" contenteditable="true" data-heading-edit="${item.idx}">${item.text||""}</div>
+                  ${headingImg(state.headings[item.idx])}
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `:"";
+
+        preview.innerHTML = `
+          <div class="rapport-wrapper">
+            <div class="rapport-page">
+              <div class="section">
+                <div class="section-title">Identification</div>
+                <div class="section-body">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <tr>
+                      <td style="width:60%;vertical-align:top;padding-right:12px;border-right:1px solid #000;">
+                        <div class="pv-row"><span class="pv-label">Nom :</span>${vEditable("{nom}")}</div>
+                        <div class="pv-row"><span class="pv-label">Prenom :</span>${vEditable("{prenom}")}</div>
+                        <div class="pv-row"><span class="pv-label">Date de naissance :</span>${vEditable("{date}")}</div>
+                        <div class="pv-row"><span class="pv-label">Nationalite :</span>${vEditable("{nat}")}</div>
+                        <div class="pv-row"><span class="pv-label">Lieu d'incarceration :</span>${vEditable("{lieu}")}</div>
+                        <div class="pv-row"><span class="pv-label">Numero d'ecrou :</span>${vEditable("{numec}")}</div>
+                      </td>
+                      <td style="width:40%;text-align:center;vertical-align:top;padding-left:12px;">
+                        <div style="font-weight:700;margin-bottom:6px;">Photo profil</div>
+                        ${markerImg("profil")}
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Supports</div>
+                <div class="section-body">
+                  <div class="pv-row"><span class="pv-label">Type :</span>${vEditable("{type}")}</div>
+                  <div class="pv-row"><span class="pv-label">Operateur :</span>${vEditable("{operateur}")}</div>
+                  <div class="pv-row"><span class="pv-label">ICCID :</span>${vEditable("{iccid}")}</div>
+                  <div class="pv-row"><span class="pv-label">IMSI :</span>${vEditable("{imsi}")}</div>
+                  <div class="pv-row"><span class="pv-label">MSISDN :</span>${vEditable("{msisdn}")}</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Photos</div>
+                <div class="section-body">
+                  <div style="display:flex;gap:12px;align-items:flex-start;">
+                    <div style="flex:1;text-align:center;">
+                      <div style="font-weight:700;">SIM 1</div>
+                      ${markerImg("sim1")}
+                    </div>
+                    <div style="flex:1;text-align:center;">
+                      <div style="font-weight:700;">SIM 2</div>
+                      ${markerImg("sim2")}
+                    </div>
+                  </div>
+                  <div class="pv-row"><span class="pv-label">Commentaires :</span><span>Néant.</span></div>
+                </div>
+              </div>
+
+              <div class="section">
+                <div class="section-title">Operateur / Synchro</div>
+                <div class="section-body">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                      <tr style="background:#f2f2f2;border-bottom:1px solid #000;">
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">Operateur</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">ICCID</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">IMSI</th>
+                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">MSISDN</th>
+                        <th style="text-align:left;padding:6px;">Date synchro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi}")}</td>
+                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn}")}</td>
+                        <td style="padding:6px;">${vEditable("{datesync}")}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Synthèse</h3>
+              <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Contenu de la carte SIM</h3>
+              <div style="font-size:13px;margin:10px 0;"><strong>Informations sur le support :</strong></div>
+              ${headingsHtml}
+            </div>
+          </div>
+        `;
+        attachInlineEditors();
+        return;
+      }
+
+      // Trame par defaut (test)
+      preview.innerHTML = `
+        <div class="rapport-wrapper">
+          <div class="rapport-page">
+            <div class="section">
+              <div class="section-title">Identité de l'objectif</div>
+              <div class="section-body">
+                <div class="pv-row"><span class="pv-label">Nom :</span>${vEditable("{nom}")}</div>
+                <div class="pv-row"><span class="pv-label">Prénom :</span>${vEditable("{prenom}")}</div>
+                <div class="pv-row"><span class="pv-label">Date de naissance :</span>${vEditable("{date}")}</div>
+                <div class="pv-row"><span class="pv-label">Nationalité :</span>${vEditable("{nat}")}</div>
+                <div class="pv-row"><span class="pv-label">Lieu d'incarcération :</span>${vEditable("{lieu}")}</div>
+                <div class="pv-row"><span class="pv-label">Numéro d'écrou :</span>${vEditable("{numec}")}</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-title">Supports investigués</div>
+              <div class="section-body">
+                <div class="pv-row"><span class="pv-label">Type de support numérique :</span>${vEditable("{type}")}</div>
+                <div class="pv-row"><span class="pv-label">Marque :</span>${vEditable("{marque}")}</div>
+                <div class="pv-row"><span class="pv-label">Modèle :</span>${vEditable("{modele}")}</div>
+                <div class="pv-row"><span class="pv-label">Capacité :</span>${vEditable("{stockage}")}</div>
+                <div class="pv-row"><span class="pv-label">IMEI :</span>${vEditable("{imei}")}</div>
+                <div class="pv-row"><span class="pv-label">Numéro de série :</span>${vEditable("{num}")}</div>
+                <div class="pv-row"><span class="pv-label">Version OS :</span>${vEditable("{vers}")}</div>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-title">Photographies des supports numériques</div>
+              <div class="section-body">
+                <div class="pv-row"><span class="pv-label">Commentaires :</span><span>Néant.</span></div>
+              </div>
+            </div>
+            <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Synthèse</h3>
+            <h3 style="margin:20px 0 10px 0;font-size:16px;font-weight:700;">Contenu ${vEditable("{detaille}")}</h3>
+            ${renderedHeadings.length?`
+              <div class="section">
+                <div class="section-title">Sections dynamiques</div>
+                <div class="section-body" style="gap:12px;">
+                  ${renderedHeadings.map(item=>`
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      <div style="font-weight:700;font-size:14px;">${item.title}</div>
+                      <div style="font-size:13px;" contenteditable="true" data-heading-edit="${item.idx}">${item.text||""}</div>
+                      ${headingImg(state.headings[item.idx])}
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            `:""}
+            ${markersImages.length?`
+              <div class="section">
+                <div class="section-title">Images sur marqueurs</div>
+                <div class="section-body" style="gap:12px;">
+                  ${markersImages.map(([key,img])=>`
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      <div style="font-weight:700;font-size:13px;">[[IMG:${escapeHtml(key)}]]</div>
+                      <img src="${escapeHtml(img)}" style="max-width:${widthFor('marker:' + key)};border:1px solid #ddd;border-radius:6px;" />
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            `:""}
+          </div>
+        </div>
+      `;
+      attachInlineEditors();
+    }
+
+function attachInlineEditors(){
+      // Sync heading edits
+      qsa("[data-heading-edit]").forEach((el)=>{
+        el.addEventListener("input",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-edit"));
+          const txt = e.target.innerText;
+          const next = [...state.headingChoices];
+          next[idx] = {mode:"custom", text: txt};
+          state.headingChoices = next;
+        });
+      });
+
+      // Sync field edits from preview
+      qsa(".editable-field[data-field]").forEach((el)=>{
+        el.addEventListener("input",(e)=>{
+          const field = e.target.getAttribute("data-field");
+          const value = e.target.innerText;
+          state.values[field] = value;
+          // Update corresponding input in left panel
+          const inp = qs(`input[data-ph="${field}"]`);
+          if(inp) inp.value = value;
+        });
+
+        // Prevent newlines in inline edits
+        el.addEventListener("keydown",(e)=>{
+          if(e.key === "Enter"){
+            e.preventDefault();
+          }
+        });
+      });
+
+      // Handle image drop zones for markers
+      qsa(".image-drop-zone[data-marker]").forEach((zone)=>{
+        const marker = zone.getAttribute("data-marker");
+        setupImageDropZone(zone, async (file)=>{
+          const uploaded = await uploadImage(file);
+          if(uploaded){
+            state.imagesAtMarkers[marker] = uploaded;
+            state.imageWidths[`marker:${marker}`] = state.imageWidthCm;
+            renderPreview();
+          }
+        });
+      });
+
+      // Handle image drop zones for headings
+      qsa(".image-drop-zone[data-heading]").forEach((zone)=>{
+        const heading = zone.getAttribute("data-heading");
+        setupImageDropZone(zone, async (file)=>{
+          const uploaded = await uploadImage(file);
+          if(uploaded){
+            state.imagesAfterHeadings[heading] = uploaded;
+            state.imageWidths[`heading:${heading}`] = state.imageWidthCm;
+            renderPreview();
+          }
+        });
+      });
+
+      // Handle image removal buttons for markers
+      qsa("button[data-remove-marker]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const marker = btn.getAttribute("data-remove-marker");
+          delete state.imagesAtMarkers[marker];
+          delete state.imageWidths[`marker:${marker}`];
+          renderPreview();
+        });
+      });
+
+      // Handle image removal buttons for headings
+      qsa("button[data-remove-heading]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const heading = btn.getAttribute("data-remove-heading");
+          delete state.imagesAfterHeadings[heading];
+          delete state.imageWidths[`heading:${heading}`];
+          delete state.imageTexts[`heading:${heading}`];
+          renderPreview();
+        });
+      });
+
+      // Handle image width sliders
+      qsa("input[data-img-width]").forEach((slider)=>{
+        slider.addEventListener("input",(e)=>{
+          const key = e.target.getAttribute("data-img-width");
+          state.imageWidths[key] = parseFloat(e.target.value);
+          renderPreview();
+        });
+      });
+
+      // Handle predefined phrase selection
+      qsa("select[data-img-template]").forEach((select)=>{
+        select.addEventListener("change",(e)=>{
+          const key = e.target.getAttribute("data-img-template");
+          const idx = e.target.value;
+          if(idx !== ""){
+            const phrase = PREDEFINED_PHRASES[parseInt(idx)];
+            if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+            const pos = state.imageTexts[key].position || "after";
+            state.imageTexts[key][pos] = phrase;
+            if(state.imageTexts[key].position === "none") state.imageTexts[key].position = "after";
+            renderPreview();
+          }
+        });
+      });
+
+      // Handle text position buttons
+      qsa("button[data-img-text-pos]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const key = btn.getAttribute("data-img-text-pos");
+          const pos = btn.getAttribute("data-pos");
+          if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+          state.imageTexts[key].position = pos;
+          renderPreview();
+        });
+      });
+
+      // Handle custom text input
+      qsa("textarea[data-img-custom-text]").forEach((textarea)=>{
+        textarea.addEventListener("input",(e)=>{
+          const key = e.target.getAttribute("data-img-custom-text");
+          const text = e.target.value;
+          if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+          const pos = state.imageTexts[key].position || "after";
+          state.imageTexts[key][pos] = text;
+          if(state.imageTexts[key].position === "none" && text) state.imageTexts[key].position = "after";
+        });
+      });
+
+      // Handle contenteditable text before/after images
+      qsa("[data-img-text-before], [data-img-text-after]").forEach((el)=>{
+        el.addEventListener("input",(e)=>{
+          const key = e.target.getAttribute("data-img-text-before") || e.target.getAttribute("data-img-text-after");
+          const isBefore = e.target.hasAttribute("data-img-text-before");
+          const text = e.target.innerText;
+          if(!state.imageTexts[key]) state.imageTexts[key] = {before:"", after:"", position:"none"};
+          if(isBefore) state.imageTexts[key].before = text;
+          else state.imageTexts[key].after = text;
+        });
+      });
+    }
+
+    function setupImageDropZone(zone, onDrop){
+      zone.addEventListener("dragover",(e)=>{
+        e.preventDefault();
+        zone.classList.add("dragover");
+      });
+      zone.addEventListener("dragleave",()=>{
+        zone.classList.remove("dragover");
+      });
+      zone.addEventListener("drop",async (e)=>{
+        e.preventDefault();
+        zone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if(file && file.type.startsWith("image/")){
+          await onDrop(file);
+        }
+      });
+      zone.addEventListener("click",()=>{
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async (e)=>{
+          const file = e.target.files[0];
+          if(file) await onDrop(file);
+        };
+        input.click();
+      });
+    }
+
+    async function uploadImage(file){
+      try{
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/upload", {method:"POST", body: fd});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.detail||"Upload échoué");
+        return data.path;
+      }catch(err){
+        console.error("Upload error:", err);
+        state.status = "Erreur upload image";
+        updateStatus();
+        return null;
+      }
+    }
+
+    function renderLayout(){
+      const app = qs("#app");
+      const inputsHtml = state.placeholders.map((ph)=>`
+        <div><label>${escapeHtml(ph)}</label>
+        <input data-ph="${escapeHtml(ph)}" value="${escapeHtml(state.values[ph]||"")}" /></div>`).join("");
+      const headingsHtml = state.headings.map((title,idx)=>{
+        const choice = state.headingChoices[idx] || {mode:"auto", text:""};
+        const defText = defaultPhrase(state.values);
+        return `
+          <div class="heading-card" data-heading-card="${idx}" style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:10px">
+            <label style="display:block;margin-bottom:6px;">${escapeHtml(title)}</label>
+            <div style="display:flex;gap:8;margin-bottom:8px;">
+              ${["auto","custom","none"].map(mode=>`
+                <button type="button" data-heading="${idx}" data-mode="${mode}" style="
+                  flex:1;padding:8px 10px;border-radius:8px;
+                  border:1px solid ${choice.mode===mode?"var(--accent)":"var(--border)"};
+                  background:${choice.mode===mode?"rgba(51,195,240,0.15)":"#0f141b"};
+                  color:#e6edf3;cursor:pointer;">
+                  ${mode==="auto"?"Phrase par défaut":mode==="custom"?"Personnalisée":"Supprimer"}
+                </button>
+              `).join("")}
+            </div>
+            ${choice.mode==="custom"?`
+              <textarea data-heading-text="${idx}" rows="2" placeholder="${escapeHtml(defText)}">${escapeHtml(choice.text||"")}</textarea>
+            `:""}
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;">Image attachée: ${escapeHtml(state.imagesAfterHeadings[title]||"aucune")}</div>
+          </div>
+        `;
+      }).join("");
+
+      app.innerHTML = `
+        <header>
+          <div><div style="font-size:20px;font-weight:700;">Rapport Auto</div>
+          <div style="color:var(--muted);font-size:13px;">Placeholders & Rendu HTML</div></div>
+          <div style="min-width:200px;">
+            <label style="font-size:12px;color:var(--muted);">Trame</label>
+            <select id="templateSelect" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;">
+              ${state.templates.map(t=>`<option value="${escapeHtml(t)}" ${state.template===t?"selected":""}>${escapeHtml(t)}</option>`).join("")}
+            </select>
+          </div>
+        </header>
+        <div class="grid">
+          <div class="panel">
+            <div class="template-bar">
+              ${state.templates.map((t)=>`
+                <div class="template-pill ${state.template===t?"active":""}" data-template-choice="${escapeHtml(t)}">${escapeHtml(t)}</div>
+              `).join("")}
+            </div>
+            <div style="font-weight:600;margin-bottom:12px;">Champs</div>
+            <form id="mainForm" class="inputs">
+              ${inputsHtml}
+              ${state.headings.length?`
+                <div>
+                  <div style="font-weight:600;margin-top:16px;margin-bottom:8px;">Titres</div>
+                  ${headingsHtml}
+                </div>`:""}
+              <div style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;">
+                <div style="font-weight:600;margin-bottom:8px;">Images (drag & drop)</div>
+                <label for="headingSelect" style="font-size:12px;color:var(--muted);">Choisir le titre à illustrer</label>
+                <select id="headingSelect" style="width:100%;margin:6px 0 10px 0;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;">
+                  ${state.headings.map((t)=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("")}
+                </select>
+                <div id="dropzone" style="height:90px;border:1px dashed var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;">
+                  Déposez une image ici ou cliquez pour choisir
+                  <input type="file" id="fileInput" accept="image/*" style="display:none;" />
+                </div>
+                <div id="uploadStatus" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
+              </div>
+              <div style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;">
+                <div style="font-weight:600;margin-bottom:8px;">Images sur marqueurs</div>
+                <label for="markerInput" style="font-size:12px;color:var(--muted);">Nom du marqueur (ex: [[IMG:monTag]] → monTag)</label>
+                <input id="markerInput" placeholder="monTag" style="width:100%;margin:6px 0 10px 0;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;" />
+                <div id="dropzoneMarkers" style="height:90px;border:1px dashed var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;">
+                  Déposez une image ici ou cliquez pour choisir
+                  <input type="file" id="fileInputMarkers" accept="image/*" style="display:none;" />
+                </div>
+                <div id="uploadStatusMarkers" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
+              </div>
+              <div style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;">
+                <div style="font-weight:600;margin-bottom:8px;">Taille des images</div>
+                <label for="imageWidthRange" style="font-size:12px;color:var(--muted);">Largeur max (cm)</label>
+                <input id="imageWidthRange" type="range" min="3" max="20" step="0.5" value="${state.imageWidthCm}" style="width:100%;margin-top:6px;" />
+                <div id="imageWidthValue" style="font-size:12px;color:var(--muted);margin-top:4px;">${state.imageWidthCm.toFixed(1)} cm</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                <input type="checkbox" id="overwriteOutput" ${state.overwrite?"checked":""} />
+                <label for="overwriteOutput" style="font-size:13px;color:var(--muted);">Écraser le fichier de sortie existant</label>
+              </div>
+              <div style="display:flex;gap:8;margin-top:12px;">
+                <button type="submit">Exporter DOCX</button>
+                <button type="button" id="printBtn">Imprimer</button>
+              </div>
+              <div class="status" id="status">${escapeHtml(state.status)}</div>
+            </form>
+          </div>
+          <div class="preview"><div id="preview"></div></div>
+        </div>
+      `;
+      attachHandlers();
+      renderPreview();
+    }
+
+    function attachHandlers(){
+      // Trame (templates)
+      qsa("button[data-heading]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const idx = Number(btn.getAttribute("data-heading"));
+          const mode = btn.getAttribute("data-mode");
+          const next=[...state.headingChoices];
+          const prevText = next[idx]?.text || "";
+          next[idx] = {mode, text: mode==="custom"?prevText:""};
+          state.headingChoices = next;
+          renderLayout();
+        });
+      });
+
+      qsa("textarea[data-heading-text]").forEach((ta)=>{
+        ta.addEventListener("input",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-text"));
+          const next=[...state.headingChoices];
+          next[idx] = {mode:"custom", text:e.target.value};
+          state.headingChoices = next;
+          renderPreview();
+        });
+      });
+
+      qsa("[data-template-choice]").forEach((el)=>{
+        el.addEventListener("click", (e)=>{
+          const val = e.currentTarget.getAttribute("data-template-choice");
+          state.template = val;
+          loadTemplateData(val);
+        });
+      });
+      const tplSelect = qs("#templateSelect");
+      if(tplSelect){
+        tplSelect.addEventListener("change",(e)=>{
+          const val=e.target.value;
+          loadTemplateData(val);
+        });
+      }
+      const overwriteCheckbox = qs("#overwriteOutput");
+      if(overwriteCheckbox){
+        overwriteCheckbox.addEventListener("change",(e)=>{ state.overwrite = e.target.checked; });
+      }
+      const imageWidthRange = qs("#imageWidthRange");
+      if(imageWidthRange){
+        imageWidthRange.addEventListener("input",(e)=>{
+          state.imageWidthCm = parseFloat(e.target.value)||7.5;
+          const label=qs("#imageWidthValue");
+          if(label) label.textContent = `${state.imageWidthCm.toFixed(1)} cm`;
+          renderPreview();
+        });
+      }
+
+      qsa("input[data-ph]").forEach((inp)=>{
+        inp.addEventListener("input",(e)=>{
+          const ph = e.target.getAttribute("data-ph");
+          state.values[ph] = e.target.value;
+          renderPreview();
+        });
+      });
+
+      qsa("button[data-heading]").forEach((btn)=>{
+        btn.addEventListener("click",(e)=>{
+          e.preventDefault();
+          const idx = Number(btn.getAttribute("data-heading"));
+          const mode = btn.getAttribute("data-mode");
+          const next=[...state.headingChoices];
+          const prevText = next[idx]?.text || "";
+          next[idx] = {mode, text: mode==="custom"?prevText:""};
+          state.headingChoices = next;
+          renderLayout();
+        });
+      });
+
+      qsa("textarea[data-heading-text]").forEach((ta)=>{
+        ta.addEventListener("input",(e)=>{
+          const idx = Number(e.target.getAttribute("data-heading-text"));
+          const next=[...state.headingChoices];
+          next[idx] = {mode:"custom", text:e.target.value};
+          state.headingChoices = next;
+          renderPreview();
+        });
+      });
+
+      const form = qs("#mainForm");
+      if(form){
+        form.addEventListener("submit", async (e)=>{
+          e.preventDefault();
+          state.status = "Génération en cours...";
+          updateStatus();
+          try{
+            const decisions = state.headings.map((_,idx)=>{
+              const choice = state.headingChoices[idx]||{mode:"auto",text:""};
+              if(choice.mode==="none") return "";
+              if(choice.mode==="custom") return (choice.text||"").trim();
+              return "__DEFAULT__";
+            });
+            // Prepare image_texts for backend
+            const imageTextsForBackend = {};
+            Object.entries(state.imageTexts || {}).forEach(([key, data]) => {
+              // Remove prefix (heading: or marker:) from key
+              const cleanKey = key.replace(/^(heading|marker):/, "");
+              imageTextsForBackend[cleanKey] = data;
+            });
+
+            await fetch("/generate",{
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({
+                template: state.template,
+                overwrite: state.overwrite,
+                image_width_inches: Math.max(1, state.imageWidthCm/2.54),
+                mapping: state.values,
+                decisions,
+                images_after_headings: state.imagesAfterHeadings,
+                images_after_paragraphs: {},
+                images_at_markers: state.imagesAtMarkers,
+                images_after_headings_sizes: Object.fromEntries(Object.entries(state.imageWidths||{}).filter(([k])=>k.startsWith("heading:")).map(([k,v])=>[k.replace("heading:",""), Math.max(1,v/2.54)])),
+                images_at_markers_sizes: Object.fromEntries(Object.entries(state.imageWidths||{}).filter(([k])=>k.startsWith("marker:")).map(([k,v])=>[k.replace("marker:",""), Math.max(1,v/2.54)])),
+                images_after_paragraphs_sizes: {},
+                image_texts: imageTextsForBackend
+              })
+            });
+            state.status = "DOCX généré";
+          }catch(err){
+            state.status = "Erreur lors de la génération";
+          }
+          updateStatus();
+        });
+      }
+
+      const printBtn = qs("#printBtn");
+      if(printBtn) printBtn.addEventListener("click",()=>window.print());
+
+      const dropzone = qs("#dropzone");
+      const fileInput = qs("#fileInput");
+      const uploadStatus = qs("#uploadStatus");
+      const headingSelect = qs("#headingSelect");
+      const headingImageWidth = qs("#headingImageWidth");
+      const headingImageWidthValue = qs("#headingImageWidthValue");
+      const headingImageWidthWrap = qs("#headingImageWidthWrap");
+      const updateHeadingWidthUI = ()=>{
+        if(!headingSelect || !headingImageWidthWrap || !headingImageWidth || !headingImageWidthValue) return;
+        const target = headingSelect.value;
+        if(state.imagesAfterHeadings[target]){
+          const cm = state.imageWidths[`heading:${target}`] ?? state.imageWidthCm;
+          headingImageWidth.value = cm;
+          headingImageWidthValue.textContent = `${cm.toFixed(1)} cm`;
+          headingImageWidthWrap.style.display = "block";
+        } else {
+          headingImageWidthWrap.style.display = "none";
+        }
+      };
+      if(headingSelect) headingSelect.addEventListener("change", updateHeadingWidthUI);
+      if(headingImageWidth){
+        headingImageWidth.addEventListener("input",(e)=>{
+          const target = headingSelect ? headingSelect.value : "";
+          if(!target) return;
+          const cm = parseFloat(e.target.value)||state.imageWidthCm;
+          state.imageWidths[`heading:${target}`]=cm;
+          if(headingImageWidthValue) headingImageWidthValue.textContent = `${cm.toFixed(1)} cm`;
+          renderPreview();
+        });
+      }
+      if(dropzone && fileInput){
+        const doUpload = async (file)=>{
+          if(!file) return;
+          uploadStatus.textContent = "Upload...";
+          const fd = new FormData(); fd.append("file", file);
+          try{
+            const res = await fetch("/upload", {method:"POST", body: fd});
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail||"Upload échoué");
+            const target = headingSelect ? headingSelect.value : state.headings[0]||"";
+            if(target){
+              state.imagesAfterHeadings[target] = data.path;
+              state.imageWidths[`heading:${target}`] = state.imageWidthCm;
+              uploadStatus.textContent = `Image attachée à "${target}"`;
+              renderPreview();
+              updateHeadingWidthUI();
+            }
+          }catch(err){ uploadStatus.textContent = "Erreur upload"; }
+        };
+        dropzone.addEventListener("dragover",(e)=>{e.preventDefault(); dropzone.style.background="rgba(51,195,240,0.08)";});
+        dropzone.addEventListener("dragleave",()=>{dropzone.style.background="";});
+        dropzone.addEventListener("drop",(e)=>{e.preventDefault(); dropzone.style.background=""; const f=e.dataTransfer.files[0]; doUpload(f);});
+        dropzone.addEventListener("click",()=>fileInput.click());
+        fileInput.addEventListener("change",(e)=>{const f=e.target.files[0]; doUpload(f);});
+      }
+
+      const dropzoneMarkers = qs("#dropzoneMarkers");
+      const fileInputMarkers = qs("#fileInputMarkers");
+      const uploadStatusMarkers = qs("#uploadStatusMarkers");
+      const markerInput = qs("#markerInput");
+      const markerImageWidth = qs("#markerImageWidth");
+      const markerImageWidthValue = qs("#markerImageWidthValue");
+      const markerImageWidthWrap = qs("#markerImageWidthWrap");
+      const updateMarkerWidthUI = ()=>{
+        if(!markerInput || !markerImageWidth || !markerImageWidthValue || !markerImageWidthWrap) return;
+        const key = (markerInput.value||"").trim();
+        if(key && state.imagesAtMarkers[key]){
+          const cm = state.imageWidths[`marker:${key}`] ?? state.imageWidthCm;
+          markerImageWidth.value = cm;
+          markerImageWidthValue.textContent = `${cm.toFixed(1)} cm`;
+          markerImageWidthWrap.style.display = "block";
+        } else {
+          markerImageWidthWrap.style.display = "none";
+        }
+      };
+      if(markerImageWidth){
+        markerImageWidth.addEventListener("input",(e)=>{
+          const key = (markerInput.value||"").trim();
+          if(!key) return;
+          const cm = parseFloat(e.target.value)||state.imageWidthCm;
+          state.imageWidths[`marker:${key}`]=cm;
+          if(markerImageWidthValue) markerImageWidthValue.textContent = `${cm.toFixed(1)} cm`;
+          renderPreview();
+        });
+      }
+      if(markerInput){
+        markerInput.addEventListener("input",updateMarkerWidthUI);
+      }
+      if(dropzoneMarkers && fileInputMarkers && markerInput){
+        const doUploadMarker = async (file)=>{
+          const key = (markerInput.value||"").trim();
+          if(!key){ uploadStatusMarkers.textContent="Choisissez un nom de marqueur"; return; }
+          if(!file) return;
+          uploadStatusMarkers.textContent="Upload...";
+          const fd=new FormData(); fd.append("file",file);
+          try{
+            const res = await fetch("/upload",{method:"POST", body: fd});
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail||"Upload échoué");
+            state.imagesAtMarkers[key]=data.path;
+            state.imageWidths[`marker:${key}`]=state.imageWidthCm;
+            uploadStatusMarkers.textContent=`Image attachée à [[IMG:${key}]]`;
+            renderPreview();
+            updateMarkerWidthUI();
+          }catch(err){ uploadStatusMarkers.textContent="Erreur upload"; }
+        };
+        dropzoneMarkers.addEventListener("dragover",(e)=>{e.preventDefault(); dropzoneMarkers.style.background="rgba(51,195,240,0.08)";});
+        dropzoneMarkers.addEventListener("dragleave",()=>{dropzoneMarkers.style.background="";});
+        dropzoneMarkers.addEventListener("drop",(e)=>{e.preventDefault(); dropzoneMarkers.style.background=""; const f=e.dataTransfer.files[0]; doUploadMarker(f);});
+        dropzoneMarkers.addEventListener("click",()=>fileInputMarkers.click());
+        fileInputMarkers.addEventListener("change",(e)=>{const f=e.target.files[0]; doUploadMarker(f);});
+      }
+    }
+
+    function updateStatus(){ const el=qs("#status"); if(el) el.textContent = state.status; }
+
+    async function loadTemplateData(templateName){
+      if(!templateName) return;
+      state.status="Chargement de la trame..."; updateStatus();
+      try{
+        const res = await fetch(`/placeholders?template=${encodeURIComponent(templateName)}`);
+        const d = await res.json();
+        if(!res.ok) throw new Error(d.detail||"Erreur placeholders");
+        state.template = d.template||templateName;
+        state.templates = d.templates||state.templates;
+        state.placeholders = d.placeholders||[];
+        state.headings = d.headings||[];
+        state.values = Object.fromEntries(state.placeholders.map((p)=>[p,""]));
+        state.headingChoices = state.headings.map(()=>({mode:"auto",text:""}));
+        state.defaultTemplate = d.default_template||"";
+        state.imagesAfterHeadings = {};
+        state.imagesAtMarkers = {};
+        state.imageWidths = {};
+        state.status = "Trame chargée";
+        renderLayout();
+      }catch(err){
+        state.status="Erreur chargement trame"; updateStatus();
+      }
+    }
+
+    async function loadTemplates(){
+      try{
+        const res = await fetch("/templates");
+        const d = await res.json();
+        if(!res.ok) throw new Error(d.detail||"Erreur templates");
+        state.templates = d.templates||[];
+        if(!state.templates.length){
+          state.status="Aucune trame disponible"; renderLayout(); return;
+        }
+        const chosen = d.default || state.templates[0] || "";
+        state.template = chosen;
+        renderLayout();
+        if(chosen){ await loadTemplateData(chosen); }
+      }catch(err){
+        // fallback sur les trames locales par défaut
+        state.status="Erreur chargement des trames (mode dégradé)";
+        state.templates = ["test","test2"];
+        state.template = state.template || "test";
+        renderLayout();
+        await loadTemplateData(state.template);
+      }
+    }
+
+    async function init(){ renderLayout(); await loadTemplates(); }
+    init();
+  </script>
+</body>
+</html>

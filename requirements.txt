@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+python-docx
+docx2pdf
+mammoth
+pillow
+pillow-heif
