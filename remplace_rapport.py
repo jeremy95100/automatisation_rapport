@@ -96,23 +96,41 @@ def find_image_markers_in_order(doc):
     return ordered
 
 
-def replace_in_runs(paragraph, mapping):
-    """Remplace placeholders coupes en runs. Valeur vide -> supprime le paragraphe entier."""
+def is_in_table_cell(paragraph):
+    """Vérifie si le paragraphe est à l'intérieur d'une cellule de tableau."""
+    parent = paragraph._element.getparent()
+    while parent is not None:
+        if parent.tag.endswith('}tc'):  # tc = table cell
+            return True
+        parent = parent.getparent()
+    return False
+
+
+def replace_in_runs(paragraph, mapping, allow_delete=True):
+    """Remplace placeholders coupes en runs. Valeur vide -> supprime le paragraphe entier (sauf dans les cellules de tableau)."""
     if not mapping:
         return False
     original = paragraph.text
     new_text = original
     remove_entire = False
+
     for old, new in mapping.items():
         if old not in new_text:
             continue
         if new == "":
-            remove_entire = True
-            break
-        new_text = new_text.replace(old, new)
+            # Ne supprimer le paragraphe que si on est HORS d'une cellule de tableau
+            if allow_delete and not is_in_table_cell(paragraph):
+                remove_entire = True
+                break
+            else:
+                # Dans une cellule de tableau, on remplace juste par une chaîne vide
+                new_text = new_text.replace(old, new)
+        else:
+            new_text = new_text.replace(old, new)
+
     if remove_entire:
         remove_paragraph(paragraph)
-        return True 
+        return True
     if new_text == original:
         return False
     for run in list(paragraph.runs):
@@ -158,7 +176,60 @@ def remove_table(table):
 def remove_empty_paragraphs(doc):
     for p in list(iter_all_paragraphs(doc)):
         if not p.text or not p.text.strip():
-            remove_paragraph(p)
+            # Ne pas supprimer les paragraphes vides dans les cellules de tableau
+            if not is_in_table_cell(p):
+                remove_paragraph(p)
+
+
+def remove_empty_sim_tables(doc, mapping):
+    """Supprime les tableaux SIM dont tous les placeholders sont vides."""
+    tables_to_remove = []
+
+    print(f"[DEBUG remove_empty_sim_tables] Nombre de tableaux dans le document: {len(doc.tables)}")
+    print(f"[DEBUG remove_empty_sim_tables] Clés SIM dans le mapping:")
+    for i in range(1, 9):
+        sim_keys = [f"{{operateur{i}}}", f"{{iccid{i}}}", f"{{imsi{i}}}", f"{{msisdn{i}}}", f"{{datesync{i}}}"]
+        for key in sim_keys:
+            if key in mapping:
+                print(f"  {key} = '{mapping[key]}'")
+
+    for table_idx, table in enumerate(doc.tables):
+        # Vérifier si c'est un tableau SIM (a une ligne avec des placeholders operateur/iccid/imsi/msisdn/datesync)
+        is_sim_table = False
+        sim_index = None
+        has_at_least_one_value = False
+
+        for row in table.rows:
+            row_text = "".join(cell.text for cell in row.cells)
+            # Chercher des placeholders SIM indexés
+            for i in range(1, 9):
+                sim_keys = [f"{{operateur{i}}}", f"{{iccid{i}}}", f"{{imsi{i}}}", f"{{msisdn{i}}}", f"{{datesync{i}}}"]
+                if any(key in row_text for key in sim_keys):
+                    is_sim_table = True
+                    sim_index = i
+                    print(f"[DEBUG] Tableau {table_idx} identifié comme SIM {i}, row_text contient: {[k for k in sim_keys if k in row_text]}")
+                    # Vérifier si AU MOINS UNE valeur est remplie dans le mapping pour cette carte SIM
+                    for key in sim_keys:
+                        value = mapping.get(key, "").strip()
+                        print(f"[DEBUG]   Vérification {key} -> '{value}'")
+                        if value:
+                            has_at_least_one_value = True
+                            print(f"[DEBUG]   => Valeur trouvée pour {key}!")
+                            break
+                    break
+            if is_sim_table:
+                break
+
+        # Ne supprimer que si c'est un tableau SIM ET qu'aucune valeur n'est remplie
+        if is_sim_table and not has_at_least_one_value:
+            print(f"[DEBUG] Suppression du tableau SIM {sim_index} - aucune valeur remplie")
+            tables_to_remove.append(table)
+        elif is_sim_table:
+            print(f"[DEBUG] Conservation du tableau SIM {sim_index} - au moins une valeur remplie")
+
+    # Supprimer les tableaux marqués
+    for table in tables_to_remove:
+        remove_table(table)
 
 
 def iter_block_items(doc):
@@ -235,9 +306,14 @@ def apply_heading_decisions(doc, decisions):
         if isinstance(blk, Paragraph) and is_heading(blk):
             decision = decisions[heading_idx]
             heading_idx += 1
-            if decision:
+            if decision == "__KEEP_TITLE_ONLY__":
+                # Garder le titre mais ne rien ajouter en dessous
+                pass
+            elif decision:
+                # Ajouter la phrase sous le titre
                 insert_after(blk, decision, style=None)
             else:
+                # Supprimer le titre et les tableaux qui suivent
                 remove_paragraph(blk)
                 blocks.pop(idx)
                 j = idx
@@ -463,6 +539,9 @@ def process_document(input_path, output_path, mapping_override: Optional[Dict[st
                 for cell in row.cells:
                     for p in cell.paragraphs:
                         replace_in_runs(p, mapping)
+
+    # Supprimer les tableaux SIM vides AVANT le remplacement des placeholders
+    remove_empty_sim_tables(doc, mapping)
 
     # Remplacer dans le corps du document
     for p in list(iter_all_paragraphs(doc)):

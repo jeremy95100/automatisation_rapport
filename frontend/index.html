@@ -388,77 +388,44 @@
               </div>
 
               <div class="section">
-                <div class="section-title">Opérateurs / Synchro</div>
+                <div class="section-title">Opérateurs / Synchro (Cartes SIM)</div>
                 <div class="section-body">
-                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                    <thead>
-                      <tr style="background:#f2f2f2;border-bottom:1px solid #000;">
-                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">Opérateur</th>
-                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">ICCID</th>
-                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">IMSI</th>
-                        <th style="text-align:left;padding:6px;border-right:1px solid #ccc;">MSISDN</th>
-                        <th style="text-align:left;padding:6px;">Date synchro</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur1}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid1}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi1}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn1}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync1}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur2}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid2}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi2}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn2}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync2}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur3}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid3}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi3}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn3}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync3}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur4}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid4}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi4}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn4}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync4}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur5}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid5}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi5}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn5}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync5}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur6}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid6}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi6}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn6}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync6}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur7}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid7}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi7}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn7}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync7}")}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{operateur8}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{iccid8}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{imsi8}")}</td>
-                        <td style="padding:6px;border-right:1px solid #ccc;">${vEditable("{msisdn8}")}</td>
-                        <td style="padding:6px;">${vEditable("{datesync8}")}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  ${(()=>{
+                    // Générer dynamiquement les tableaux SIM en fonction des placeholders détectés
+                    const simRows = [];
+                    for(let i = 1; i <= 8; i++){
+                      const opKey = `{operateur${i}}`;
+                      // Vérifier si ce placeholder existe dans la liste des placeholders
+                      if(state.placeholders.includes(opKey)){
+                        simRows.push(`
+                          <div style="margin-bottom:12px;border:1px solid #ccc;border-radius:4px;overflow:hidden;">
+                            <div style="background:#f5f5f5;padding:4px 8px;font-weight:600;font-size:12px;border-bottom:1px solid #ccc;">Carte SIM ${i}</div>
+                            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                              <thead>
+                                <tr style="background:#f2f2f2;border-bottom:1px solid #ddd;">
+                                  <th style="text-align:left;padding:6px;border-right:1px solid #ddd;width:20%;">Opérateur</th>
+                                  <th style="text-align:left;padding:6px;border-right:1px solid #ddd;width:20%;">ICCID</th>
+                                  <th style="text-align:left;padding:6px;border-right:1px solid #ddd;width:20%;">IMSI</th>
+                                  <th style="text-align:left;padding:6px;border-right:1px solid #ddd;width:20%;">MSISDN</th>
+                                  <th style="text-align:left;padding:6px;width:20%;">Date synchro</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td style="padding:6px;border-right:1px solid #ddd;">${vEditable(`{operateur${i}}`)}</td>
+                                  <td style="padding:6px;border-right:1px solid #ddd;">${vEditable(`{iccid${i}}`)}</td>
+                                  <td style="padding:6px;border-right:1px solid #ddd;">${vEditable(`{imsi${i}}`)}</td>
+                                  <td style="padding:6px;border-right:1px solid #ddd;">${vEditable(`{msisdn${i}}`)}</td>
+                                  <td style="padding:6px;">${vEditable(`{datesync${i}}`)}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        `);
+                      }
+                    }
+                    return simRows.length > 0 ? simRows.join('') : '<div style="color:#666;font-style:italic;">Aucune carte SIM détectée dans le template</div>';
+                  })()}
                 </div>
               </div>
 
@@ -838,6 +805,7 @@ function attachInlineEditors(){
         const choice = state.headingChoices[idx] || {mode:"auto", text:""};
         const defText = defaultPhrase(state.values);
         const blocks = state.headingContent[title] || [];
+        const isDeleted = choice.mode === "none";
 
         const blocksHtml = blocks.map((block, blockIdx) => {
           if(block.type === "text"){
@@ -864,20 +832,20 @@ function attachInlineEditors(){
         }).join("");
 
         return `
-          <div class="heading-card" data-heading-card="${idx}" style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:10px">
-            <label style="display:block;margin-bottom:6px;font-weight:600;">${escapeHtml(title)}</label>
-            <div style="display:flex;gap:8;margin-bottom:8px;">
+          <div class="heading-card" data-heading-card="${idx}" style="margin-bottom:14px;border:1px solid ${isDeleted ? '#ff4444' : 'var(--border)'};border-radius:10px;padding:10px;${isDeleted ? 'opacity:0.6;' : ''}">
+            <label style="display:block;margin-bottom:6px;font-weight:600;${isDeleted ? 'text-decoration:line-through;color:#ff6666;' : ''}">${escapeHtml(title)}${isDeleted ? ' (Supprimé)' : ''}</label>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
               ${["custom","none"].map(mode=>`
                 <button type="button" data-heading="${idx}" data-mode="${mode}" style="
                   flex:1;padding:8px 10px;border-radius:8px;
-                  border:1px solid ${(choice.mode===mode || (choice.mode==="auto" && mode==="custom"))?"var(--accent)":"var(--border)"};
-                  background:${(choice.mode===mode || (choice.mode==="auto" && mode==="custom"))?"rgba(51,195,240,0.15)":"#0f141b"};
+                  border:1px solid ${choice.mode===mode ? (mode==="none" ? "#ff4444" : "var(--accent)") : "var(--border)"};
+                  background:${choice.mode===mode ? (mode==="none" ? "rgba(255,68,68,0.15)" : "rgba(51,195,240,0.15)") : "#0f141b"};
                   color:#e6edf3;cursor:pointer;">
                   ${mode==="custom"?"Personnalisée":"Supprimer"}
                 </button>
               `).join("")}
             </div>
-            ${choice.mode==="custom" || choice.mode==="auto"?`
+            ${!isDeleted?`
               <div style="margin-bottom:8px;">
                 <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Phrases types :</label>
                 <select data-heading-phrase="${idx}" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:#0f141b;color:#e6edf3;margin-bottom:8px;">
@@ -886,18 +854,22 @@ function attachInlineEditors(){
                 </select>
               </div>
               <textarea data-heading-text="${idx}" rows="2" placeholder="${escapeHtml(defText)}">${escapeHtml(choice.text||"")}</textarea>
-            `:""}
 
-            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-              <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Contenu additionnel (${blocks.length} blocs)</div>
-              <div class="blocks-container" data-heading-idx="${idx}">
-                ${blocksHtml}
+              <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+                <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Contenu additionnel (${blocks.length} blocs)</div>
+                <div class="blocks-container" data-heading-idx="${idx}">
+                  ${blocksHtml}
+                </div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                  <button type="button" data-add-text-block="${idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;">+ Texte</button>
+                  <button type="button" data-add-image-block="${idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;">+ Image</button>
+                </div>
               </div>
-              <div style="display:flex;gap:6px;margin-top:8px;">
-                <button type="button" data-add-text-block="${idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;">+ Texte</button>
-                <button type="button" data-add-image-block="${idx}" style="flex:1;padding:6px;font-size:11px;background:#2d3748;">+ Image</button>
+            `:`
+              <div style="font-size:12px;color:#ff6666;text-align:center;padding:10px;">
+                Ce titre et son contenu seront supprimés du document final
               </div>
-            </div>
+            `}
           </div>
         `;
       }).join("");
@@ -1214,7 +1186,7 @@ function attachInlineEditors(){
         });
       });
 
-      // Trame (templates)
+      // Gestion des boutons Personnalisée/Supprimer pour les titres
       qsa("button[data-heading]").forEach((btn)=>{
         btn.addEventListener("click",(e)=>{
           e.preventDefault();
@@ -1222,9 +1194,12 @@ function attachInlineEditors(){
           const mode = btn.getAttribute("data-mode");
           const next=[...state.headingChoices];
           const prevText = next[idx]?.text || "";
-          next[idx] = {mode, text: mode==="custom"?prevText:""};
+          // Quand on passe en mode "custom", on garde le texte précédent
+          // Quand on passe en mode "none", on vide le texte
+          next[idx] = {mode, text: mode==="custom" ? prevText : ""};
           state.headingChoices = next;
           renderLayout();
+          renderPreview();
         });
       });
 
@@ -1313,29 +1288,6 @@ function attachInlineEditors(){
         });
       });
 
-      qsa("button[data-heading]").forEach((btn)=>{
-        btn.addEventListener("click",(e)=>{
-          e.preventDefault();
-          const idx = Number(btn.getAttribute("data-heading"));
-          const mode = btn.getAttribute("data-mode");
-          const next=[...state.headingChoices];
-          const prevText = next[idx]?.text || "";
-          next[idx] = {mode, text: mode==="custom"?prevText:""};
-          state.headingChoices = next;
-          renderLayout();
-        });
-      });
-
-      qsa("textarea[data-heading-text]").forEach((ta)=>{
-        ta.addEventListener("input",(e)=>{
-          const idx = Number(e.target.getAttribute("data-heading-text"));
-          const next=[...state.headingChoices];
-          next[idx] = {mode:"custom", text:e.target.value};
-          state.headingChoices = next;
-          renderPreview();
-        });
-      });
-
       const form = qs("#mainForm");
       if(form){
         form.addEventListener("submit", async (e)=>{
@@ -1363,19 +1315,15 @@ function attachInlineEditors(){
                 return fillPhrase(phraseTemplate).trim();
               }
 
-              // PRIORITÉ 2: Si l'utilisateur a saisi un texte personnalisé, l'utiliser (peu importe le mode)
+              // PRIORITÉ 2: Si l'utilisateur a saisi un texte personnalisé, l'utiliser
               if(choice.text && choice.text.trim()) {
                 console.log(`[DECISION] Using custom text for "${heading}": "${choice.text.trim()}"`);
                 return choice.text.trim();
               }
 
-              // PRIORITÉ 3: Si heading_content contient du contenu (images/texte), garder le titre avec phrase par défaut
-              if(state.headingContent[heading] && state.headingContent[heading].length > 0) {
-                return "__DEFAULT__";
-              }
-
-              // PRIORITÉ 4: Par défaut, garder le titre avec phrase par défaut
-              return "__DEFAULT__";
+              // PRIORITÉ 3: Par défaut, ne rien ajouter sous le titre (l'utilisateur peut ajouter via heading_content)
+              // On utilise "__KEEP_TITLE_ONLY__" pour garder le titre sans phrase en dessous
+              return "__KEEP_TITLE_ONLY__";
             });
             // Prepare image_texts for backend
             const imageTextsForBackend = {};

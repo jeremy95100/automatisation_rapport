@@ -214,13 +214,16 @@ async def generate(payload: GeneratePayload):
     if decisions is None:
         decisions = default_heading_decisions(headings, mapping)
     else:
-        # "__DEFAULT__" => phrase auto, "" => rien, autre => texte personnalisé
+        # "__DEFAULT__" => phrase auto, "__KEEP_TITLE_ONLY__" => garder titre sans phrase, "" => supprimer, autre => texte personnalisé
         resolved = []
         defaults = default_heading_decisions(headings, mapping)
         for idx, h in enumerate(headings):
             choice = payload.decisions[idx] if idx < len(payload.decisions) else "__DEFAULT__"
             if choice == "__DEFAULT__" or choice is None:
                 resolved.append(defaults[idx])
+            elif choice == "__KEEP_TITLE_ONLY__":
+                # Garder le titre mais ne rien ajouter en dessous
+                resolved.append("__KEEP_TITLE_ONLY__")
             else:
                 resolved.append(choice)
         decisions = resolved
